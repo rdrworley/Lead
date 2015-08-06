@@ -1,0 +1,1954 @@
+
+program 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+initial 
+
+
+algorithm ialg = 2 
+
+nsteps nstp = 1000 
+cinterval cint = 1. 
+constant tstart = 0. 
+constant tstop = 32850. 
+
+
+constant cairpulse = 0. 
+constant cairbase = 0. 
+constant fairpulse = 1. 
+constant airstart = 0. 
+constant airstop = 32850. 
+constant airwid1 = 7. 
+constant airper1 = 7. 
+constant airwid2 = 365. 
+constant airper2 = 365. 
+
+constant cdustpulse = 0. 
+constant cdustbase = 0. 
+constant fdustpulse = 1. 
+constant duststart = 0. 
+constant duststop = 32850. 
+constant dustwid1 = 7. 
+constant dustper1 = 7. 
+constant dustwid2 = 365. 
+constant dustper2 = 365. 
+
+constant cwaterpulse = 0. 
+constant cwaterbase = 0. 
+constant fwaterpulse = 1. 
+constant waterstart = 0. 
+constant waterstop = 32850. 
+constant waterwid1 = 7. 
+constant waterper1 = 7. 
+constant waterwid2 = 365. 
+constant waterper2 = 365. 
+
+constant infoodpulse = 0. 
+constant infoodbase = 0. 
+constant ffoodpulse = 1. 
+constant foodstart = 0. 
+constant foodstop = 32850. 
+constant foodwid1 = 7. 
+constant foodper1 = 7. 
+constant foodwid2 = 365. 
+constant foodper2 = 365. 
+
+constant inotherpulse = 0. 
+constant inotherbase = 1. 
+constant fotherpulse = 1. 
+constant otherstart = 0. 
+constant otherstop = 18250. 
+constant otherwid1 = 7. 
+constant otherper1 = 7. 
+constant otherwid2 = 365. 
+constant otherper2 = 365. 
+
+
+constant day0 = 0. 
+constant wbirth = 3.5 
+constant wchild = 22 
+
+constant half = 3 
+constant wadult = 34 
+
+constant kappa = 600 
+constant lambda = 0.017 
+constant lb = 0.85 
+
+# line 110 
+z99999 = exp ( - lambda * wadult * ( day0 / 365 ) ) 
+# line 110 
+wbody0 = wbirth + wchild * ( day0 / 365 ) / ( half + ( day0 / 365 ) ) + wadult / ( 1. + kappa * z99999 ) 
+# line 112 
+
+
+constant kwt = 310. 
+constant crtwt = 4000. 
+constant trbwt = 3000. 
+constant ashwt = 2800. 
+constant crtash = 2200. 
+constant trbash = 1500. 
+constant crtashf = 0.55 
+constant trbashf = 0.50 
+
+
+constant vblc = 0.067 
+constant vlc = 0.025 
+constant vkc = 0.0045 
+constant vluc = 0.015 
+
+
+constant rbaair = 1. 
+constant rbadust = 1. 
+constant rbawater = 1. 
+constant rbafood = 1. 
+constant rbaother = 1. 
+constant rbaet2gi = 1. 
+
+
+
+constant et1exh = 1.0 
+constant et2gi = 100.0 
+constant et3etln = 0.001 
+constant bb1et2 = 10.0 
+constant bb2et2 = 0.03 
+constant bb3thln = 0.01 
+constant bbo1bb1 = 2.0 
+constant bbo2bb1 = 0.03 
+constant bbo3thln = 0.01 
+constant ai1bbo1 = 0.02 
+constant ai2bbo1 = 0.001 
+constant ai3bbo1 = 0.0001 
+constant ai3thln = 0.00002 
+
+
+constant pispts = 100.0 
+constant pisbl = 0.1 
+constant ptsbl = 0.0001 
+constant fbnd = 0. 
+constant bndbl = 0.1 
+
+
+if ( fbnd .eq. 0. ) then 
+bndbl2 = 0. 
+else 
+bndbl2 = bndbl 
+endif 
+
+pisbl2 = pisbl * ( 1. - fbnd ) 
+ptsbl2 = ptsbl * ( 1. - fbnd ) 
+pisbnd = pisbl * fbnd 
+ptsbnd = ptsbl * fbnd 
+
+
+constant rbcnlin = 1 
+constant rbcnl = 60. 
+constant satrat = 350. 
+constant power = 1.5 
+constant ifetal = 1 
+constant bldmot = 2.35 
+constant bratio = 0.85 
+
+constant sofin = 0.50 
+constant rbcin = 0.07 
+constant bonin = 0.32 
+constant renin = 0.01 
+constant hepin = 0.055 
+constant branin = 0.045 
+
+constant rstmc = 24. 
+constant rsic = 6. 
+constant ruli = 1.85 
+constant rlli = 1.0 
+
+constant rlvr1 = 0.0693 
+
+
+
+
+constant rkdn1 = 0.139 
+
+constant rsof0 = 2.079 
+constant rsof1 = 0.00693 
+constant rsof2 = 0.00038 
+
+
+
+
+constant tourin = 0.015 
+
+
+
+
+constant tofece = 0.006 
+
+
+
+constant toswet = 0.0035 
+
+constant s2hair = 0.4 
+
+
+constant tolvr1 = 0.04 
+
+
+constant h1toh2 = 0.1 
+
+
+constant h1tosi = 0.45 
+
+
+constant h1tobl = 0.45 
+
+
+
+constant tokdn1 = 0.02 
+
+
+constant tokdn2 = 0.0002 
+
+
+constant torbc = 0.24 
+
+
+constant tevf = 0.5000 
+
+
+
+
+
+constant sizevf = 3. 
+
+
+constant rplas = 2000. 
+
+
+constant toprot = 0.0004 
+
+
+constant rprot = 0.139 
+
+
+
+
+
+
+constant hcta = 0.46 
+
+constant tbonel = 0.08 
+
+
+
+rdecay = 0. 
+
+
+
+
+
+
+
+if ( ifetal .eq. 1 ) then 
+ysof20 = sofin * ( bldmot * bratio * 3. / rbcin ) 
+yrbc0 = rbcin * ( bldmot * bratio * 3. / rbcin ) 
+ycvol0 = 0.8 * bonin * ( bldmot * bratio * 3. / rbcin ) 
+ytvol0 = 0.2 * bonin * ( bldmot * bratio * 3. / rbcin ) 
+ykdn20 = renin * ( bldmot * bratio * 3. / rbcin ) 
+ylvr20 = hepin * ( bldmot * bratio * 3. / rbcin ) 
+ybran0 = branin * ( bldmot * bratio * 3. / rbcin ) 
+else 
+ysof20 = 0. 
+yrbc0 = 0. 
+ycvol0 = 0. 
+ytvol0 = 0. 
+ykdn20 = 0. 
+ylvr20 = 0. 
+ybran0 = 0. 
+endif 
+
+
+yet1z = 0. 
+yet2isz = 0. 
+yet2tsz = 0. 
+yet2bndz = 0. 
+yexhz = 0. 
+yet3isz = 0. 
+yet3tsz = 0. 
+yet3bndz = 0. 
+yetlnisz = 0. 
+yetlntsz = 0. 
+yetlnbndz = 0. 
+ybb1isz = 0. 
+ybb1tsz = 0. 
+ybb1bndz = 0. 
+ybb2isz = 0. 
+ybb2tsz = 0. 
+ybb2bndz = 0. 
+ybb3isz = 0. 
+ybb3tsz = 0. 
+ybb3bndz = 0. 
+ybbo1isz = 0. 
+ybbo1tsz = 0. 
+ybbo1bndz = 0. 
+ybbo2isz = 0. 
+ybbo2tsz = 0. 
+ybbo2bndz = 0. 
+ybbo3isz = 0. 
+ybbo3tsz = 0. 
+ybbo3bndz = 0. 
+ythlnisz = 0. 
+ythlntsz = 0. 
+ythlnbndz = 0. 
+yai1isz = 0. 
+yai1tsz = 0. 
+yai1bndz = 0. 
+yai2isz = 0. 
+yai2tsz = 0. 
+yai2bndz = 0. 
+yai3isz = 0. 
+yai3tsz = 0. 
+yai3bndz = 0. 
+
+
+yr10 = 0. 
+yr20 = 0. 
+yr30 = 0. 
+yr40 = 0. 
+ystmc0 = 0. 
+ysic0 = 0. 
+ypls0 = 0. 
+yplas0 = 0. 
+yprot0 = 0. 
+yblud0 = 0. 
+yevf0 = 0. 
+ysof00 = 0. 
+ysof10 = 0. 
+ycsur0 = 0. 
+ycdif0 = 0. 
+ytsur0 = 0. 
+ytdif0 = 0. 
+ylvr10 = 0. 
+ykdn10 = 0. 
+yblad0 = 0. 
+yulic0 = 0. 
+yllic0 = 0. 
+yurin0 = 0. 
+yfece0 = 0. 
+yswet0 = 0. 
+yhair0 = 0. 
+
+
+end 
+
+dynamic 
+
+derivative 
+
+
+day = day0 + t 
+year = day / 365. 
+
+
+table cair , 1 , 50 / 50 * 0.0 , 50 * 0.0 / 
+table vent , 1 , 50 / 50 * 1.0 , 50 * 1.0 / 
+table cdust , 1 , 50 / 50 * 1.0 , 50 * 1.0 / 
+table irdust , 1 , 50 / 50 * 1.0 , 50 * 1.0 / 
+table cwater , 1 , 50 / 50 * 1.0 , 50 * 1.0 / 
+table irwater , 1 , 50 / 50 * 1.0 , 50 * 1.0 / 
+table infood , 1 , 50 / 50 * 1.0 , 50 * 1.0 / 
+table inother , 1 , 50 / 50 * 1.0 , 50 * 1.0 / 
+
+
+table fet1 , 1 , 9 / 9 * 1.0 , 9 * 1.0 / 
+table fet2 , 1 , 9 / 9 * 1.0 , 9 * 1.0 / 
+table fet3 , 1 , 9 / 9 * 1.0 , 9 * 1.0 / 
+table fbb1 , 1 , 9 / 9 * 1.0 , 9 * 1.0 / 
+table fbb2 , 1 , 9 / 9 * 1.0 , 9 * 1.0 / 
+table fbb3 , 1 , 9 / 9 * 1.0 , 9 * 1.0 / 
+table fbbo1 , 1 , 9 / 9 * 1.0 , 9 * 1.0 / 
+table fbbo2 , 1 , 9 / 9 * 1.0 , 9 * 1.0 / 
+table fbbo3 , 1 , 9 / 9 * 1.0 , 9 * 1.0 / 
+table fai1 , 1 , 9 / 9 * 1.0 , 9 * 1.0 / 
+table fai2 , 1 , 9 / 9 * 1.0 , 9 * 1.0 / 
+table fai3 , 1 , 9 / 9 * 1.0 , 9 * 1.0 / 
+
+# line 403 
+z99998 = fai3 ( t ) 
+# line 403 
+z99997 = fai2 ( t ) 
+# line 403 
+z99996 = fai1 ( t ) 
+# line 403 
+z99995 = fbbo3 ( t ) 
+# line 403 
+z99994 = fbbo2 ( t ) 
+# line 403 
+z99993 = fbbo1 ( t ) 
+# line 403 
+z99992 = fbb3 ( t ) 
+# line 403 
+z99991 = fbb2 ( t ) 
+# line 403 
+z99990 = fbb1 ( t ) 
+# line 403 
+z99989 = fet3 ( t ) 
+# line 403 
+z99988 = fet2 ( t ) 
+# line 403 
+z99987 = fet1 ( t ) 
+# line 403 
+frt = z99987 + z99988 + z99989 + z99990 + z99991 + z99992 + z99993 + z99994 + z99995 + z99996 + z99997 + z99998 
+
+
+table af1 , 1 , 20 / 20 * 1.0 , 20 * 1.0 / 
+
+aft = af1 ( t ) 
+table gscal , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+gscalt = gscal ( t ) 
+table rcort , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+rcortt = rcort ( t ) 
+table rtrab , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+rtrabt = rtrab ( t ) 
+table rcs2b , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+rcs2bt = rcs2b ( t ) 
+table rts2b , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+rts2bt = rts2b ( t ) 
+table rcs2df , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+rcs2dft = rcs2df ( t ) 
+table rts2df , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+rts2dft = rts2df ( t ) 
+table rdiff , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+
+
+rdifft = rdiff ( t ) 
+table flong , 1 , 11 / 11 * 0. , 11 * 0. / 
+
+
+flongt = flong ( t ) 
+table rblad , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+rbladt = rblad ( t ) 
+table rlvr2 , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+rlvr2t = rlvr2 ( t ) 
+table rkdn2 , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+rkdn2t = rkdn2 ( t ) 
+table rbran , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+rbrant = rbran ( t ) 
+table tbone , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+
+tbonet = tbone ( t ) 
+table tfrac , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+
+tfract = tfrac ( t ) 
+table tosof0 , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+tosof0t = tosof0 ( t ) 
+table tosof1 , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+
+tosof1t = tosof1 ( t ) 
+table tosof2 , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+tosof2t = tosof2 ( t ) 
+table tobran , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+tobrant = tobran ( t ) 
+table rrbc , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+rrbct = rrbc ( t ) 
+table amtbld , 1 , 11 / 11 * 1.0 , 11 * 1.0 / 
+
+amtbldt = amtbld ( t ) 
+
+
+# line 480 
+z99986 = pulse ( airstart , airper2 , airwid2 ) 
+# line 480 
+z99985 = pulse ( airstart , airper1 , airwid1 ) 
+# line 480 
+airpulse = z99985 * z99986 
+# line 481 
+z99984 = pulse ( duststart , dustper2 , dustwid2 ) 
+# line 481 
+z99983 = pulse ( duststart , dustper1 , dustwid1 ) 
+# line 481 
+dustpulse = z99983 * z99984 
+# line 482 
+z99982 = pulse ( waterstart , waterper2 , waterwid2 ) 
+# line 482 
+z99981 = pulse ( waterstart , waterper1 , waterwid1 ) 
+# line 482 
+waterpulse = z99981 * z99982 
+# line 483 
+z99980 = pulse ( foodstart , foodper2 , foodwid2 ) 
+# line 483 
+z99979 = pulse ( foodstart , foodper1 , foodwid1 ) 
+# line 483 
+foodpulse = z99979 * z99980 
+# line 484 
+z99978 = pulse ( otherstart , otherper2 , otherwid2 ) 
+# line 484 
+z99977 = pulse ( otherstart , otherper1 , otherwid1 ) 
+# line 484 
+otherpulse = z99977 * z99978 
+
+
+
+
+
+
+
+
+
+if ( t>airstop ) then 
+# line 495 
+z99976 = cair ( t ) 
+# line 495 
+z99975 = vent ( t ) 
+# line 495 
+inairtotal = z99975 * ( cairbase * fairpulse + z99976 * ( 1 - fairpulse ) ) 
+else 
+# line 497 
+z99974 = cair ( t ) 
+# line 497 
+z99973 = vent ( t ) 
+# line 497 
+inairtotal = z99973 * ( ( cairbase + cairpulse * airpulse ) * fairpulse + z99974 * ( 1 - fairpulse ) ) 
+endif 
+
+if ( t>duststop ) then 
+# line 501 
+z99972 = cdust ( t ) 
+# line 501 
+z99971 = irdust ( t ) 
+# line 501 
+industtotal = z99971 * ( cdustbase * fdustpulse + z99972 * ( 1 - fdustpulse ) ) 
+else 
+# line 503 
+z99970 = cdust ( t ) 
+# line 503 
+z99969 = irdust ( t ) 
+# line 503 
+industtotal = z99969 * ( ( cdustbase + cdustpulse * dustpulse ) * fdustpulse + z99970 * ( 1 - fdustpulse ) ) 
+endif 
+
+if ( t>waterstop ) then 
+# line 507 
+z99968 = cwater ( t ) 
+# line 507 
+z99967 = irwater ( t ) 
+# line 507 
+inwatertotal = z99967 * ( cwaterbase * fwaterpulse + z99968 * ( 1 - fwaterpulse ) ) 
+else 
+# line 509 
+z99966 = cwater ( t ) 
+# line 509 
+z99965 = irwater ( t ) 
+# line 509 
+inwatertotal = z99965 * ( ( cwaterbase + cwaterpulse * waterpulse ) * fwaterpulse + z99966 * ( 1 - fwaterpulse ) ) 
+endif 
+
+if ( t>foodstop ) then 
+# line 513 
+z99964 = infood ( t ) 
+# line 513 
+infoodtotal = infoodbase * ffoodpulse + z99964 * ( 1 - ffoodpulse ) 
+else 
+# line 515 
+z99963 = infood ( t ) 
+# line 515 
+infoodtotal = ( infoodbase + infoodpulse * foodpulse ) * ffoodpulse + z99963 * ( 1 - ffoodpulse ) 
+endif 
+
+if ( t>otherstop ) then 
+# line 519 
+z99962 = inother ( t ) 
+# line 519 
+inothertotal = inotherbase * fotherpulse + z99962 * ( 1 - fotherpulse ) 
+else 
+# line 521 
+z99961 = inother ( t ) 
+# line 521 
+inothertotal = ( inotherbase + inotherpulse * otherpulse ) * fotherpulse + z99961 * ( 1 - fotherpulse ) 
+endif 
+
+intotal = inairtotal + industtotal + inwatertotal + infoodtotal + inothertotal 
+
+
+
+
+
+
+# line 531 
+z99960 = exp ( - lambda * wadult * ( day / 365 ) ) 
+# line 531 
+wbody = wbirth + wchild * ( day / 365 ) / ( half + ( day / 365 ) ) + wadult / ( 1. + kappa * z99960 ) 
+# line 533 
+lbm = wbody * lb 
+# line 534 
+ucr = ( ( lbm / 0.0272 ) - 8.58 ) / 1000 
+
+vbl = vblc * wbody 
+vpl = vbl * ( 1 - hct ) 
+vrbc = vbl * hct 
+# line 539 
+vl = 1000 * ( vlc * ( wbirth + wadult + wchild ) * ( ( wbody / ( wbirth + wadult + wchild ) ) ** .85 ) ) 
+# line 541 
+# line 541 
+vk = 1000 * ( vkc * ( wbirth + wadult + wchild ) * ( ( wbody / ( wbirth + wadult + wchild ) ) ** .84 ) ) 
+# line 543 
+# line 543 
+vp = 1000 * ( vluc * ( wbirth + wadult + wchild ) * ( ( wbody / ( wbirth + wadult + wchild ) ) ** .84 ) ) 
+# line 545 
+wskel = 1000 * 0.058 * wbody ** 1.21 
+wbone = 1000 * 0.0290 * wbody ** 1.21 
+vbone = 1000 * 0.0168 * wbody ** 1.188 
+cvbone = 0.8 * vbone 
+tvbone = vbone - cvbone 
+dbone = wbone / vbone 
+wcrt = wbone * cvbone / vbone 
+wtrb = wbone * tvbone / vbone 
+wkid = vk * 1.05 
+wliv = vl * 1.05 
+# line 555 
+z99959 = exp ( - ( ( day / 365. ) - 0.01 ) * 13.9 ) 
+# line 555 
+z99958 = rsw ( ( day / 365. ) .le. 0.01 , .52 + ( day / 365. ) * 14 , hcta * ( 1. + ( 0.66 - hcta ) * z99959 ) ) 
+# line 555 
+hct = z99958 
+
+
+
+# line 559 
+z99957 = rdiff ( t ) 
+# line 559 
+z99956 = flong ( t ) 
+# line 559 
+rdf2cs = ( 1. - z99956 ) * z99957 
+
+# line 561 
+z99955 = rdiff ( t ) 
+# line 561 
+z99954 = flong ( t ) 
+# line 561 
+rdf2ts = ( 1. - z99954 ) * z99955 
+
+# line 563 
+z99953 = rdiff ( t ) 
+# line 563 
+z99952 = flong ( t ) 
+# line 563 
+rdf2dc = z99952 * z99953 
+
+# line 565 
+z99951 = rdiff ( t ) 
+# line 565 
+z99950 = flong ( t ) 
+# line 565 
+rdf2dt = z99950 * z99951 
+
+
+# line 568 
+z99949 = tbone ( t ) 
+# line 568 
+agescl = ( 1.0 - tevf - z99949 ) / ( 1.0 - tevf - tbonel ) 
+
+
+
+
+
+
+
+turin = agescl * tourin 
+tfece = agescl * tofece 
+tswet = agescl * toswet 
+tsof0 = agescl * tosof0 ( t ) 
+tsof1 = agescl * tosof1 ( t ) 
+tsof2 = agescl * tosof2 ( t ) 
+tbran = agescl * tobran ( t ) 
+tlvr1 = agescl * tolvr1 
+tkdn1 = agescl * tokdn1 
+tkdn2 = agescl * tokdn2 
+trbc = agescl * torbc 
+tprot = agescl * toprot 
+
+
+
+
+
+
+
+
+
+
+
+
+
+if ( rbcnlin .eq. 1 ) then 
+if ( rbconc .le. rbcnl ) then 
+toorbc = trbc 
+else 
+# line 605 
+toorbc = trbc * ( 1. - ( ( rbconc - rbcnl ) / ( satrat - rbcnl ) ) ) ** power 
+endif 
+else 
+toorbc = trbc 
+endif 
+
+
+
+tsum = toorbc + tevf + tprot + tbone ( t ) + turin + tfece + tswet + tlvr1 + tkdn1 + tkdn2 + tsof0 + tsof1 + tsof2 + tbran 
+# line 615 
+
+# line 616 
+cf = ( 1. - toorbc ) / ( 1. - trbc ) 
+
+
+
+
+rpls = tsum * rplas 
+
+
+
+revf = tevf * rpls / sizevf 
+
+
+
+
+
+
+
+
+
+inet1 = inairtotal * fet1 ( t ) 
+outet1 = yet1 * et1exh 
+det1 = inet1 - outet1 
+# line 770 
+z99913 = det1 
+# line 770 
+z99912 = yet1z 
+# line 770 
+integral yet1 = z99913 , z99912 
+
+# line 772 
+z99911 = outet1 
+# line 772 
+z99910 = yexhz 
+# line 772 
+integral yexh = z99911 , z99910 
+
+inet2is = inairtotal * fet2 ( t ) + ybb1is * bb1et2 + ybb2is * bb2et2 
+outet2is = yet2is * ( et2gi + pispts + pisbl2 + pisbnd ) 
+det2is = inet2is - outet2is 
+# line 777 
+z99909 = det2is 
+# line 777 
+z99908 = yet2isz 
+# line 777 
+integral yet2is = z99909 , z99908 
+
+inet2ts = yet2is * pispts + ybb1ts * bb1et2 + ybb2ts * bb2et2 
+outet2ts = yet2ts * ( et2gi + ptsbl2 + ptsbnd ) 
+det2ts = inet2ts - outet2ts 
+# line 782 
+z99907 = det2ts 
+# line 782 
+z99906 = yet2tsz 
+# line 782 
+integral yet2ts = z99907 , z99906 
+
+inet2bnd = yet2is * pisbnd + yet2ts * ptsbnd 
+outet2bnd = yet2bnd * bndbl2 
+det2bnd = inet2bnd - outet2bnd 
+# line 787 
+z99905 = det2bnd 
+# line 787 
+z99904 = yet2bndz 
+# line 787 
+integral yet2bnd = z99905 , z99904 
+
+det2gi = yet2 * et2gi 
+yet2giz = 0. 
+# line 791 
+z99903 = det2gi 
+# line 791 
+z99902 = yet2giz 
+# line 791 
+integral yet2gi = z99903 , z99902 
+
+inet3is = inairtotal * fet3 ( t ) 
+outet3is = yet3is * ( pispts + pisbl2 + pisbnd + et3etln ) 
+det3is = inet3is - outet3is 
+# line 796 
+z99901 = det3is 
+# line 796 
+z99900 = yet3isz 
+# line 796 
+integral yet3is = z99901 , z99900 
+
+inet3ts = yet3is * pispts 
+outet3ts = yet3ts * ( et3etln + ptsbl2 + ptsbnd ) 
+det3ts = inet3ts - outet3ts 
+# line 801 
+z99899 = det3ts 
+# line 801 
+z99898 = yet3tsz 
+# line 801 
+integral yet3ts = z99899 , z99898 
+
+inet3bnd = yet3is * pisbnd + yet3ts * ptsbnd 
+outet3bnd = yet3bnd * bndbl2 
+det3bnd = inet3bnd - outet3bnd 
+# line 806 
+z99897 = det3bnd 
+# line 806 
+z99896 = yet3bndz 
+# line 806 
+integral yet3bnd = z99897 , z99896 
+
+inetlnis = yet3is * et3etln 
+outetlnis = yetlnis * ( pispts + pisbl2 + pisbnd ) 
+detlnis = inetlnis - outetlnis 
+# line 811 
+z99895 = detlnis 
+# line 811 
+z99894 = yetlnisz 
+# line 811 
+integral yetlnis = z99895 , z99894 
+
+inetlnts = yetlnis * pispts + yet3ts * et3etln 
+outetlnts = yetlnts * ( ptsbl2 + ptsbnd ) 
+detlnts = inetlnts - outetlnts 
+# line 816 
+z99893 = detlnts 
+# line 816 
+z99892 = yetlntsz 
+# line 816 
+integral yetlnts = z99893 , z99892 
+
+inetlnbnd = yetlnis * pisbnd + yetlnts * ptsbnd 
+outetlnbnd = yetlnbnd * bndbl2 
+detlnbnd = inetlnbnd - outetlnbnd 
+# line 821 
+z99891 = detlnbnd 
+# line 821 
+z99890 = yetlnbndz 
+# line 821 
+integral yetlnbnd = z99891 , z99890 
+
+
+inbb1is = inairtotal * fbb1 ( t ) + ybbo1is * bbo1bb1 + ybbo2is * bbo2bb1 
+outbb1is = ybb1is * ( bb1et2 + pispts + pisbl2 + pisbnd ) 
+dbb1is = inbb1is - outbb1is 
+# line 827 
+z99889 = dbb1is 
+# line 827 
+z99888 = ybb1isz 
+# line 827 
+integral ybb1is = z99889 , z99888 
+
+inbb1ts = ybb1is * pispts + ybbo1ts * bbo1bb1 + ybbo2ts * bbo2bb1 
+outbb1ts = ybb1ts * ( bb1et2 + ptsbl2 + ptsbnd ) 
+dbb1ts = inbb1ts - outbb1ts 
+# line 832 
+z99887 = dbb1ts 
+# line 832 
+z99886 = ybb1tsz 
+# line 832 
+integral ybb1ts = z99887 , z99886 
+
+inbb1bnd = ybb1is * pisbnd + ybb1ts * ptsbnd 
+outbb1bnd = ybb1bnd * bndbl2 
+dbb1bnd = inbb1bnd - outbb1bnd 
+# line 837 
+z99885 = dbb1bnd 
+# line 837 
+z99884 = ybb1bndz 
+# line 837 
+integral ybb1bnd = z99885 , z99884 
+
+inbb2is = inairtotal * fbb2 ( t ) 
+outbb2is = ybb2is * ( bb2et2 + pispts + pisbl2 + pisbnd ) 
+dbb2is = inbb2is - outbb2is 
+# line 842 
+z99883 = dbb2is 
+# line 842 
+z99882 = ybb2isz 
+# line 842 
+integral ybb2is = z99883 , z99882 
+
+inbb2ts = ybb2is * pispts 
+outbb2ts = ybb2ts * ( bb2et2 + ptsbl2 + ptsbnd ) 
+dbb2ts = inbb2ts - outbb2ts 
+# line 847 
+z99881 = dbb2ts 
+# line 847 
+z99880 = ybb2tsz 
+# line 847 
+integral ybb2ts = z99881 , z99880 
+
+inbb2bnd = ybb2is * pisbnd + ybb2ts * ptsbnd 
+outbb2bnd = ybb2bnd * bndbl2 
+dbb2bnd = inbb2bnd - outbb2bnd 
+# line 852 
+z99879 = dbb2bnd 
+# line 852 
+z99878 = ybb2bndz 
+# line 852 
+integral ybb2bnd = z99879 , z99878 
+
+inbb3is = inairtotal * fbb3 ( t ) 
+outbb3is = ybb3is * ( bb3thln + pispts + pisbl2 + pisbnd ) 
+dbb3is = inbb3is - outbb3is 
+# line 857 
+z99877 = dbb3is 
+# line 857 
+z99876 = ybb3isz 
+# line 857 
+integral ybb3is = z99877 , z99876 
+
+inbb3ts = ybb3is * pispts 
+outbb3ts = ybb3ts * ( bb3thln + ptsbl2 + ptsbnd ) 
+dbb3ts = inbb3ts - outbb3ts 
+# line 862 
+z99875 = dbb3ts 
+# line 862 
+z99874 = ybb3tsz 
+# line 862 
+integral ybb3ts = z99875 , z99874 
+
+inbb3bnd = ybb3is * pisbnd + ybb3ts * ptsbnd 
+outbb3bnd = ybb3bnd * bndbl2 
+dbb3bnd = inbb3bnd - outbb3bnd 
+# line 867 
+z99873 = dbb3bnd 
+# line 867 
+z99872 = ybb3bndz 
+# line 867 
+integral ybb3bnd = z99873 , z99872 
+
+inbbo1is = inairtotal * fbbo1 ( t ) + yai1is * ai1bbo1 + yai2is * ai2bbo1 + yai3is * ai3bbo1 
+outbbo1is = ybbo1is * ( bbo1bb1 + pispts + pisbl2 + pisbnd ) 
+dbbo1is = inbbo1is - outbbo1is 
+# line 872 
+z99871 = dbbo1is 
+# line 872 
+z99870 = ybbo1isz 
+# line 872 
+integral ybbo1is = z99871 , z99870 
+
+inbbo1ts = ybbo1is * pispts + yai1ts * ai1bbo1 + yai2ts * ai2bbo1 + yai3ts * ai3bbo1 
+outbbo1ts = ybbo1ts * ( bbo1bb1 + ptsbl2 + ptsbnd ) 
+dbbo1ts = inbbo1ts - outbbo1ts 
+# line 877 
+z99869 = dbbo1ts 
+# line 877 
+z99868 = ybbo1tsz 
+# line 877 
+integral ybbo1ts = z99869 , z99868 
+
+inbbo1bnd = ybbo1is * pisbnd + ybbo1ts * ptsbnd 
+outbbo1bnd = ybbo1bnd * bndbl2 
+dbbo1bnd = inbbo1bnd - outbbo1bnd 
+# line 882 
+z99867 = dbbo1bnd 
+# line 882 
+z99866 = ybbo1bndz 
+# line 882 
+integral ybbo1bnd = z99867 , z99866 
+
+inbbo2is = inairtotal * fbbo2 ( t ) 
+outbbo2is = ybbo2is * ( bbo2bb1 + pispts + pisbl2 + pisbnd ) 
+dbbo2is = inbbo2is - outbbo2is 
+# line 887 
+z99865 = dbbo2is 
+# line 887 
+z99864 = ybbo2isz 
+# line 887 
+integral ybbo2is = z99865 , z99864 
+
+inbbo2ts = ybbo2is * pispts 
+outbbo2ts = ybbo2ts * ( bbo2bb1 + ptsbl2 + ptsbnd ) 
+dbbo2ts = inbbo2ts - outbbo2ts 
+# line 892 
+z99863 = dbbo2ts 
+# line 892 
+z99862 = ybbo2tsz 
+# line 892 
+integral ybbo2ts = z99863 , z99862 
+
+inbbo2bnd = ybbo2is * pisbnd + ybbo2ts * ptsbnd 
+outbbo2bnd = ybbo2bnd * bndbl2 
+dbbo2bnd = inbbo2bnd - outbbo2bnd 
+# line 897 
+z99861 = dbbo2bnd 
+# line 897 
+z99860 = ybbo2bndz 
+# line 897 
+integral ybbo2bnd = z99861 , z99860 
+
+inbbo3is = inairtotal * fbbo3 ( t ) 
+outbbo3is = ybbo3is * ( pispts + bbo3thln + pisbl2 + pisbnd ) 
+dbbo3is = inbbo3is - outbbo3is 
+# line 902 
+z99859 = dbbo3is 
+# line 902 
+z99858 = ybbo3isz 
+# line 902 
+integral ybbo3is = z99859 , z99858 
+
+inbbo3ts = ybbo3is * pispts 
+outbbo3ts = ybbo3ts * ( bbo3thln + ptsbl2 + ptsbnd ) 
+dbbo3ts = inbbo3ts - outbbo3ts 
+# line 907 
+z99857 = dbbo3ts 
+# line 907 
+z99856 = ybbo3tsz 
+# line 907 
+integral ybbo3ts = z99857 , z99856 
+
+inbbo3bnd = ybbo3is * pisbnd + ybbo3ts * ptsbnd 
+outbbo3bnd = ybbo3bnd * bndbl2 
+dbbo3bnd = inbbo3bnd - outbbo3bnd 
+# line 912 
+z99855 = dbbo3bnd 
+# line 912 
+z99854 = ybbo3bndz 
+# line 912 
+integral ybbo3bnd = z99855 , z99854 
+
+
+inai1is = inairtotal * fai1 ( t ) 
+outai1is = yai1is * ( ai1bbo1 + pispts + pisbl2 + pisbnd ) 
+dai1is = inai1is - outai1is 
+# line 918 
+z99853 = dai1is 
+# line 918 
+z99852 = yai1isz 
+# line 918 
+integral yai1is = z99853 , z99852 
+
+inai1ts = yai1is * pispts 
+outai1ts = yai1ts * ( ai1bbo1 + ptsbl2 + ptsbnd ) 
+dai1ts = inai1ts - outai1ts 
+# line 923 
+z99851 = dai1ts 
+# line 923 
+z99850 = yai1tsz 
+# line 923 
+integral yai1ts = z99851 , z99850 
+
+inai1bnd = yai1is * pisbnd + yai1ts * ptsbnd 
+outai1bnd = yai1bnd * bndbl2 
+dai1bnd = inai1bnd - outai1bnd 
+# line 928 
+z99849 = dai1bnd 
+# line 928 
+z99848 = yai1bndz 
+# line 928 
+integral yai1bnd = z99849 , z99848 
+
+inai2is = inairtotal * fai2 ( t ) 
+outai2is = yai2is * ( ai2bbo1 + pispts + pisbl2 + pisbnd ) 
+dai2is = inai2is - outai2is 
+# line 933 
+z99847 = dai2is 
+# line 933 
+z99846 = yai2isz 
+# line 933 
+integral yai2is = z99847 , z99846 
+
+inai2ts = yai2is * pispts 
+outai2ts = yai2ts * ( ai2bbo1 + ptsbl2 + ptsbnd ) 
+dai2ts = inai2ts - outai2ts 
+# line 938 
+z99845 = dai2ts 
+# line 938 
+z99844 = yai2tsz 
+# line 938 
+integral yai2ts = z99845 , z99844 
+
+inai2bnd = yai2is * pisbnd + yai2ts * ptsbnd 
+outai2bnd = yai2bnd * bndbl2 
+dai2bnd = inai2bnd - outai2bnd 
+# line 943 
+z99843 = dai2bnd 
+# line 943 
+z99842 = yai2bndz 
+# line 943 
+integral yai2bnd = z99843 , z99842 
+
+inai3is = inairtotal * fai3 ( t ) 
+outai3is = yai3is * ( ai3bbo1 + ai3thln + pispts + pisbl2 + pisbnd ) 
+dai3is = inai3is - outai3is 
+# line 948 
+z99841 = dai3is 
+# line 948 
+z99840 = yai3isz 
+# line 948 
+integral yai3is = z99841 , z99840 
+
+inai3ts = yai3is * pispts 
+outai3ts = yai3ts * ( ai3bbo1 + ai3thln + ptsbl2 + ptsbnd ) 
+dai3ts = inai3ts - outai3ts 
+# line 953 
+z99839 = dai3ts 
+# line 953 
+z99838 = yai3tsz 
+# line 953 
+integral yai3ts = z99839 , z99838 
+
+inai3bnd = yai3is * pisbnd + yai3ts * ptsbnd 
+outai3bnd = yai3bnd * bndbl2 
+dai3bnd = inai3bnd - outai3bnd 
+# line 958 
+z99837 = dai3bnd 
+# line 958 
+z99836 = yai3bndz 
+# line 958 
+integral yai3bnd = z99837 , z99836 
+
+inthlnis = ybb3is * bb3thln + ybbo3is * bbo3thln + yai3is * ai3thln 
+outthlnis = ythlnis * ( pispts + pisbl2 + pisbnd ) 
+dthlnis = inthlnis - outthlnis 
+# line 963 
+z99835 = dthlnis 
+# line 963 
+z99834 = ythlnisz 
+# line 963 
+integral ythlnis = z99835 , z99834 
+
+inthlnts = ythlnis * pispts + ybb3ts * bb3thln + ybbo3ts * bbo3thln + yai3ts * ai3thln 
+outthlnts = ythlnts * ( ptsbl2 + ptsbnd ) 
+dthlnts = inthlnts - outthlnts 
+# line 968 
+z99833 = dthlnts 
+# line 968 
+z99832 = ythlntsz 
+# line 968 
+integral ythlnts = z99833 , z99832 
+
+inthlnbnd = ythlnis * pisbnd + ythlnts * ptsbnd 
+outthlnbnd = ythlnbnd * bndbl2 
+dthlnbnd = inthlnbnd - outthlnbnd 
+# line 973 
+z99831 = dthlnbnd 
+# line 973 
+z99830 = ythlnbndz 
+# line 973 
+integral ythlnbnd = z99831 , z99830 
+
+
+yet2 = yet2is + yet2ts + yet2bnd 
+yet3 = yet3is + yet3ts + yet3bnd 
+yetln = yetlnis + yetlnts + yetlnbnd 
+yet = yet1 + yet2 + yet3 + yetln 
+
+ybb1 = ybb1is + ybb1ts + ybb1bnd 
+ybb2 = ybb2is + ybb2ts + ybb2bnd 
+ybb3 = ybb3is + ybb3ts + ybb3bnd 
+ybb = ybb1 + ybb2 + ybb3 
+
+ybbo1 = ybbo1is + ybbo1ts + ybbo1bnd 
+ybbo2 = ybbo2is + ybbo2ts + ybbo2bnd 
+ybbo3 = ybbo3is + ybbo3ts + ybbo3bnd 
+ybbo = ybbo1 + ybbo2 + ybbo3 
+
+yai1 = yai1is + yai1ts + yai1bnd 
+yai2 = yai2is + yai2ts + yai2bnd 
+yai3 = yai3is + yai3ts + yai3bnd 
+yai = yai1 + yai2 + yai3 
+
+ythln = ythlnis + ythlnts + ythlnbnd 
+yth = ybb + ybbo + yai + ythln 
+
+yln = yetln + ythln 
+
+yrt = yet + yth 
+
+ylung = yrt 
+
+ybalrt = inairtotal - yrt - yabsrt - yexh - yet2gi 
+
+
+absetis = pisbl2 * ( yet2is + yet3is + yetlnis ) 
+absetts = ptsbl2 * ( yet2ts + yet3ts + yetlnts ) 
+absetbnd = bndbl2 * ( yet2bnd + yet3bnd + yetlnbnd ) 
+abset = absetis + absetts + absetbnd 
+
+absbbis = pisbl2 * ( ybb1is + ybb2is + ybb3is ) 
+absbbts = ptsbl2 * ( ybb1ts + ybb2ts + ybb3ts ) 
+absbbbnd = bndbl2 * ( ybb1bnd + ybb2bnd + ybb3bnd ) 
+absbb = absbbis + absbbts + absbbbnd 
+
+absbbois = pisbl2 * ( ybbo1is + ybbo2is + ybbo3is ) 
+absbbots = ptsbl2 * ( ybbo1ts + ybbo2ts + ybbo3ts ) 
+absbbobnd = bndbl2 * ( ybbo1bnd + ybbo2bnd + ybbo3bnd ) 
+absbbo = absbbois + absbbots + absbbobnd 
+
+absaiis = pisbl2 * ( yai1is + yai2is + yai3is ) 
+absaits = ptsbl2 * ( yai1ts + yai2ts + yai3ts ) 
+absaibnd = bndbl2 * ( yai1bnd + yai2bnd + yai3bnd ) 
+absai = absaiis + absaits + absaibnd 
+
+absthlnis = pisbl2 * ythlnis 
+absthlnts = ptsbl2 * ythlnts 
+absthlnbnd = bndbl2 * ythlnbnd 
+absthln = absthlnis + absthlnts + absthlnbnd 
+
+absth = absbb + absbbo + absai + absthln 
+
+absrt = abset + absth 
+yabsrtz = 0. 
+# line 1037 
+z99829 = absrt 
+# line 1037 
+z99828 = yabsrtz 
+# line 1037 
+integral yabsrt = z99829 , z99828 
+
+
+
+
+
+
+
+
+
+inet2gi = yet2 * et2gi 
+ingest = industtotal + infoodtotal + inwatertotal + inothertotal + inet2gi 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+tout_stmc = rdecay + gscal ( t ) * rstmc 
+
+pstmcdust = industtotal 
+dstmcdust = pstmcdust - tout_stmc * ystmcdust 
+# line 1074 
+z99827 = dstmcdust 
+# line 1074 
+z99826 = ystmc0 
+# line 1074 
+integral ystmcdust = z99827 , z99826 
+
+pstmcfood = infoodtotal 
+dstmcfood = pstmcfood - tout_stmc * ystmcfood 
+# line 1078 
+z99825 = dstmcfood 
+# line 1078 
+z99824 = ystmc0 
+# line 1078 
+integral ystmcfood = z99825 , z99824 
+
+pstmcwater = inwatertotal 
+dstmcwater = pstmcwater - tout_stmc * ystmcwater 
+# line 1082 
+z99823 = dstmcwater 
+# line 1082 
+z99822 = ystmc0 
+# line 1082 
+integral ystmcwater = z99823 , z99822 
+
+pstmcother = inothertotal 
+dstmcother = pstmcother - tout_stmc * ystmcother 
+# line 1086 
+z99821 = dstmcother 
+# line 1086 
+z99820 = ystmc0 
+# line 1086 
+integral ystmcother = z99821 , z99820 
+
+pstmcet2gi = inet2gi 
+dstmcet2gi = pstmcet2gi - tout_stmc * ystmcet2gi 
+# line 1090 
+z99819 = dstmcet2gi 
+# line 1090 
+z99818 = ystmc0 
+# line 1090 
+integral ystmcet2gi = z99819 , z99818 
+
+ystmc = ystmcdust + ystmcfood + ystmcwater + ystmcother + ystmcet2gi 
+
+
+
+
+
+
+
+
+tout_sic = rdecay + gscal ( t ) * rsic 
+
+psicdust = gscal ( t ) * rstmc * ystmcdust 
+dsicdust = psicdust - tout_sic * ysicdust 
+# line 1105 
+z99817 = dsicdust 
+# line 1105 
+z99816 = ysic0 
+# line 1105 
+integral ysicdust = z99817 , z99816 
+
+psicfood = gscal ( t ) * rstmc * ystmcfood 
+dsicfood = psicfood - tout_sic * ysicfood 
+# line 1109 
+z99815 = dsicfood 
+# line 1109 
+z99814 = ysic0 
+# line 1109 
+integral ysicfood = z99815 , z99814 
+
+psicwater = gscal ( t ) * rstmc * ystmcwater 
+dsicwater = psicwater - tout_sic * ysicwater 
+# line 1113 
+z99813 = dsicwater 
+# line 1113 
+z99812 = ysic0 
+# line 1113 
+integral ysicwater = z99813 , z99812 
+
+psicother = gscal ( t ) * rstmc * ystmcother 
+dsicother = psicother - tout_sic * ysicother 
+# line 1117 
+z99811 = dsicother 
+# line 1117 
+z99810 = ysic0 
+# line 1117 
+integral ysicother = z99811 , z99810 
+
+psicet2gi = gscal ( t ) * rstmc * ystmcet2gi 
+dsicet2gi = psicet2gi - tout_sic * ysicet2gi 
+# line 1121 
+z99809 = dsicet2gi 
+# line 1121 
+z99808 = ysic0 
+# line 1121 
+integral ysicet2gi = z99809 , z99808 
+
+psicinternal = h1tosi * rlvr1 * ylvr1 + tfece * cf * btemp 
+dsicinternal = psicinternal - tout_sic * ysicinternal 
+# line 1125 
+z99807 = dsicinternal 
+# line 1125 
+z99806 = ysic0 
+# line 1125 
+integral ysicinternal = z99807 , z99806 
+
+ysic = ysicdust + ysicfood + ysicwater + ysicother + ysicet2gi + ysicinternal 
+
+
+
+
+
+
+
+
+
+
+
+
+
+# line 1009 
+z99948 = af1 ( t ) 
+# line 1009 
+z99947 = af1 ( t ) 
+# line 1009 
+z99946 = af1 ( t ) 
+# line 1009 
+z99945 = af1 ( t ) 
+# line 1009 
+z99944 = af1 ( t ) 
+# line 1009 
+z99943 = af1 ( t ) 
+# line 1009 
+z99942 = gscal ( t ) 
+# line 1009 
+pulic = z99942 * rsic * ( ysicdust * ( 1. - z99943 * rbadust ) + ysicfood * ( 1. - z99944 * rbafood ) + ysicwater * ( 1. - z99945 * rbawater ) + ysicother * ( 1. - z99946 * rbaother ) + ysicet2gi * ( 1. - z99947 * rbaet2gi ) + ysicinternal * ( 1. - z99948 ) ) 
+# line 1015 
+tout_ulic = gscal ( t ) * ruli + rdecay 
+dulic = pulic - tout_ulic * yulic 
+# line 1160 
+z99805 = dulic 
+# line 1160 
+z99804 = yulic0 
+# line 1160 
+integral yulic = z99805 , z99804 
+
+
+
+pllic = gscal ( t ) * ruli * yulic 
+tout_llic = gscal ( t ) * rlli + rdecay 
+dllic = pllic - tout_llic * yllic 
+# line 1167 
+z99803 = dllic 
+# line 1167 
+z99802 = yllic0 
+# line 1167 
+integral yllic = z99803 , z99802 
+
+
+
+
+
+# line 1030 
+z99941 = af1 ( t ) 
+# line 1030 
+z99940 = af1 ( t ) 
+# line 1030 
+z99939 = af1 ( t ) 
+# line 1030 
+z99938 = af1 ( t ) 
+# line 1030 
+z99937 = af1 ( t ) 
+# line 1030 
+absorb = ysicdust * z99937 * rbadust + ysicfood * z99938 * rbafood + ysicwater * z99939 * rbawater + ysicother * z99940 * rbaother + ysicet2gi * z99941 * rbaet2gi 
+# line 1035 
+# line 1186 
+z99801 = absorb 
+# line 1186 
+z99800 = 0. 
+# line 1186 
+integral aucabs = z99801 , z99800 
+# line 1187 
+z99799 = aucabs 
+# line 1187 
+z99798 = 0. 
+# line 1187 
+integral totabs = z99799 , z99798 
+
+
+
+
+
+
+
+
+
+
+
+
+
+# line 1050 
+z99936 = af1 ( t ) 
+# line 1050 
+z99935 = af1 ( t ) 
+# line 1050 
+z99934 = af1 ( t ) 
+# line 1050 
+z99933 = af1 ( t ) 
+# line 1050 
+z99932 = af1 ( t ) 
+# line 1050 
+z99931 = af1 ( t ) 
+# line 1050 
+z99930 = gscal ( t ) 
+# line 1050 
+z99929 = rbran ( t ) 
+# line 1050 
+z99928 = rtrab ( t ) 
+# line 1050 
+z99927 = rcort ( t ) 
+# line 1050 
+z99926 = rts2b ( t ) 
+# line 1050 
+z99925 = rcs2b ( t ) 
+# line 1050 
+z99924 = rkdn2 ( t ) 
+# line 1050 
+z99923 = rlvr2 ( t ) 
+# line 1050 
+z99922 = rrbc ( t ) 
+# line 1050 
+pp1 = ( rprot * yprot + z99922 * yrbc ) + ( revf * yevf ) + ( rsof0 * ysof0 ) + ( ( 1.0 - s2hair ) * rsof1 * ysof1 ) + ( rsof2 * ysof2 ) + ( h1tobl * rlvr1 * ylvr1 ) + ( z99923 * ylvr2 ) + ( z99924 * ykdn2 ) + ( z99925 * ycsur ) + ( z99926 * ytsur ) + ( z99927 * ycvol ) + ( z99928 * ytvol ) + ( z99929 * ybran ) + z99930 * rsic * ( ysicdust * z99931 * rbadust + ysicfood * z99932 * rbafood + ysicwater * z99933 * rbawater + ysicother * z99934 * rbaother + ysicet2gi * z99935 * rbaet2gi + ysicinternal * z99936 ) 
+# line 1061 
+
+ppls = pp1 + absrt 
+tout_pls = rpls + rdecay 
+dpls = ppls - tout_pls * ypls 
+# line 1238 
+z99797 = dpls 
+# line 1238 
+z99796 = ypls0 
+# line 1238 
+integral ypls = z99797 , z99796 
+
+btemp = rpls * ypls 
+
+
+
+pprot = tprot * cf * btemp 
+
+tout_prot = rprot + rdecay 
+dprot = pprot - tout_prot * yprot 
+# line 1248 
+z99795 = dprot 
+# line 1248 
+z99794 = yprot0 
+# line 1248 
+integral yprot = z99795 , z99794 
+yplas = ypls + yprot 
+
+
+prbc = toorbc * btemp 
+tout_rbc = rrbc ( t ) + rdecay 
+drbc = prbc - tout_rbc * yrbc 
+# line 1255 
+z99793 = drbc 
+# line 1255 
+z99792 = yrbc0 
+# line 1255 
+integral yrbc = z99793 , z99792 
+yblud = yplas + yrbc 
+
+
+pevf = tevf * cf * btemp 
+tout_evf = revf + rdecay 
+devf = pevf - tout_evf * yevf 
+# line 1262 
+z99791 = devf 
+# line 1262 
+z99790 = yevf0 
+# line 1262 
+integral yevf = z99791 , z99790 
+
+
+psof0 = tsof0 * cf * btemp 
+tout_sof0 = rsof0 + rdecay 
+dsof0 = psof0 - tout_sof0 * ysof0 
+# line 1268 
+z99789 = dsof0 
+# line 1268 
+z99788 = ysof00 
+# line 1268 
+integral ysof0 = z99789 , z99788 
+
+
+psof1 = tsof1 * cf * btemp 
+tout_sof1 = rsof1 + rdecay 
+dsof1 = psof1 - tout_sof1 * ysof1 
+# line 1274 
+z99787 = dsof1 
+# line 1274 
+z99786 = ysof10 
+# line 1274 
+integral ysof1 = z99787 , z99786 
+
+
+psof2 = tsof2 * cf * btemp 
+tout_sof2 = rsof2 + rdecay 
+dsof2 = psof2 - tout_sof2 * ysof2 
+# line 1280 
+z99785 = dsof2 
+# line 1280 
+z99784 = ysof20 
+# line 1280 
+integral ysof2 = z99785 , z99784 
+
+
+pbran = tbran * cf * btemp 
+tout_bran = rbran ( t ) + rdecay 
+dbran = pbran - tout_bran * ybran 
+# line 1286 
+z99783 = dbran 
+# line 1286 
+z99782 = ybran0 
+# line 1286 
+integral ybran = z99783 , z99782 
+
+
+# line 1116 
+z99921 = tfrac ( t ) 
+# line 1116 
+z99920 = tbone ( t ) 
+# line 1116 
+pcsur = z99920 * ( 1.0 - z99921 ) * cf * btemp + rdf2cs * ycdif 
+
+
+
+
+# line 1121 
+z99919 = rcs2df ( t ) 
+# line 1121 
+z99918 = rcs2b ( t ) 
+# line 1121 
+tout_csur = z99918 + z99919 + rdecay 
+
+
+dcsur = pcsur - tout_csur * ycsur 
+# line 1308 
+z99781 = dcsur 
+# line 1308 
+z99780 = ycsur0 
+# line 1308 
+integral ycsur = z99781 , z99780 
+
+
+pcdif = rcs2df ( t ) * ycsur 
+tout_cdif = rdf2cs + rdf2dc + rdecay 
+dcdif = pcdif - tout_cdif * ycdif 
+# line 1314 
+z99779 = dcdif 
+# line 1314 
+z99778 = ycdif0 
+# line 1314 
+integral ycdif = z99779 , z99778 
+
+
+pcvol = rdf2dc * ycdif 
+tout_cvol = rcort ( t ) + rdecay 
+dcvol = pcvol - tout_cvol * ycvol 
+# line 1320 
+z99777 = dcvol 
+# line 1320 
+z99776 = ycvol0 
+# line 1320 
+integral ycvol = z99777 , z99776 
+
+
+# line 1140 
+z99917 = tfrac ( t ) 
+# line 1140 
+z99916 = tbone ( t ) 
+# line 1140 
+ptsur = ( z99916 * z99917 * cf * btemp + rdf2ts * ytdif ) 
+# line 1141 
+z99915 = rts2df ( t ) 
+# line 1141 
+z99914 = rts2b ( t ) 
+# line 1141 
+tout_tsur = z99914 + z99915 + rdecay 
+dtsur = ptsur - tout_tsur * ytsur 
+# line 1336 
+z99775 = dtsur 
+# line 1336 
+z99774 = ytsur0 
+# line 1336 
+integral ytsur = z99775 , z99774 
+
+
+ptdif = rts2df ( t ) * ytsur 
+tout_tdif = rdf2ts + rdf2dt + rdecay 
+dtdif = ptdif - tout_tdif * ytdif 
+# line 1342 
+z99773 = dtdif 
+# line 1342 
+z99772 = ytdif0 
+# line 1342 
+integral ytdif = z99773 , z99772 
+
+
+ptvol = rdf2dt * ytdif 
+tout_tvol = rtrab ( t ) + rdecay 
+dtvol = ptvol - tout_tvol * ytvol 
+# line 1348 
+z99771 = dtvol 
+# line 1348 
+z99770 = ytvol0 
+# line 1348 
+integral ytvol = z99771 , z99770 
+
+
+plvr1 = tlvr1 * cf * btemp 
+tout_lvr1 = rlvr1 + rdecay 
+dlvr1 = plvr1 - tout_lvr1 * ylvr1 
+# line 1354 
+z99769 = dlvr1 
+# line 1354 
+z99768 = ylvr10 
+# line 1354 
+integral ylvr1 = z99769 , z99768 
+
+
+plvr2 = h1toh2 * rlvr1 * ylvr1 
+tout_lvr2 = rlvr2 ( t ) + rdecay 
+dlvr2 = plvr2 - tout_lvr2 * ylvr2 
+# line 1360 
+z99767 = dlvr2 
+# line 1360 
+z99766 = ylvr20 
+# line 1360 
+integral ylvr2 = z99767 , z99766 
+
+
+ylivr = ylvr1 + ylvr2 
+
+
+pkdn1 = tkdn1 * cf * btemp 
+tout_kdn1 = rkdn1 + rdecay 
+dkdn1 = pkdn1 - tout_kdn1 * ykdn1 
+# line 1369 
+z99765 = dkdn1 
+# line 1369 
+z99764 = ykdn10 
+# line 1369 
+integral ykdn1 = z99765 , z99764 
+
+
+pkdn2 = tkdn2 * cf * btemp 
+tout_kdn2 = rkdn2 ( t ) + rdecay 
+dkdn2 = pkdn2 - tout_kdn2 * ykdn2 
+# line 1375 
+z99763 = dkdn2 
+# line 1375 
+z99762 = ykdn20 
+# line 1375 
+integral ykdn2 = z99763 , z99762 
+
+
+ykdne = ykdn1 + ykdn2 
+
+
+pblad = ( turin * cf * btemp + rkdn1 * ykdn1 ) 
+tout_blad = rblad ( t ) + rdecay 
+dblad = pblad - tout_blad * yblad 
+# line 1384 
+z99761 = dblad 
+# line 1384 
+z99760 = yblad0 
+# line 1384 
+integral yblad = z99761 , z99760 
+
+
+purin = rblad ( t ) * yblad 
+durin = purin 
+# line 1389 
+z99759 = durin 
+# line 1389 
+z99758 = yurin0 
+# line 1389 
+integral yurin = z99759 , z99758 
+if ( t .ne. 0. ) twaurin = yurin / t 
+
+
+pfece = gscal ( t ) * rlli * yllic 
+dfece = pfece 
+# line 1395 
+z99757 = dfece 
+# line 1395 
+z99756 = yfece0 
+# line 1395 
+integral yfece = z99757 , z99756 
+
+
+pswet = tswet * cf * btemp 
+dswet = pswet 
+# line 1400 
+z99755 = dswet 
+# line 1400 
+z99754 = yswet0 
+# line 1400 
+integral yswet = z99755 , z99754 
+
+
+phair = s2hair * rsof1 * ysof1 
+dhair = phair 
+# line 1405 
+z99753 = dhair 
+# line 1405 
+z99752 = yhair0 
+# line 1405 
+integral yhair = z99753 , z99752 
+
+
+
+ygi = ystmc + ysic + yulic + yllic 
+
+sigma = yplas + yrbc + yevf + ysof0 + ysof1 + ysof2 + ybran + ycvol + ytvol + ycsur + ytsur + ycdif + ytdif + ykdn1 + ykdn2 + yblad + ylvr1 + ylvr2 + yrt + ystmc + ysic + yulic + yllic + yurin + yfece + yswet + yhair 
+# line 1223 
+
+
+tbody1 = yplas + yrbc + yevf + ysof0 + ysof1 + ysof2 + ybran + ycvol + ytvol + ycsur + ytsur + ycdif + ytdif + ykdn1 + ykdn2 + ylvr1 + ylvr2 
+# line 1228 
+
+
+tbody2 = tbody1 + yrt + yblad + ystmc + ysic + yulic + yllic 
+
+
+tsoftall = ysoft + ylivr + ykdne + ybran + yblud + yevf 
+
+
+
+totexc = yurin + yfece + yswet + yhair 
+
+
+yskel = ycvol + ytvol + ycsur + ytsur + ycdif + ytdif 
+ytrab = ytsur + ytdif + ytvol 
+ycort = ycsur + ycdif + ycvol 
+ysoft = ysof0 + ysof1 + ysof2 
+
+
+if ( tbody1 .ne. 0.0 ) then 
+bonfrc = yskel / tbody1 
+brnfrc = ybran / tbody1 
+hepfrc = ylivr / tbody1 
+bldfrc = yblud / tbody1 
+renfrc = ykdne / tbody1 
+othfrc = ysoft / tbody1 
+endif 
+
+
+
+
+if ( yblud .ne. 0.0 ) plsrbc = yplas / yblud 
+if ( yblud .ne. 0.0 ) pcent = 100. * yplas / yblud 
+
+# line 1261 
+if ( vbl .ne. 0.0 ) blconc = yblud / ( vbl * 10. ) 
+
+
+# line 1264 
+if ( vrbc .ne. 0.0 ) rbconcc = yrbc / ( vrbc * 10. ) 
+if ( rbconcc .le. satrat ) then 
+rbconc = rbconcc 
+else 
+rbconc = satrat 
+endif 
+
+
+
+
+# line 1274 
+if ( vpl .ne. 0.0 ) plconc = yplas / ( vpl * 10. ) 
+if ( blconc .ne. 0.0 ) plcrbc = 100 * plconc / blconc 
+
+# line 1469 
+z99751 = blconc 
+# line 1469 
+z99750 = 0. 
+# line 1469 
+integral aucblconc = z99751 , z99750 
+if ( t .gt. 0. ) twablconc = aucblconc / t 
+
+rencon = ykdne / kwt 
+crtcon = ycort / crtwt 
+trbcon = ytrab / trbwt 
+ashcon = yskel / ashwt 
+kidconc = ykdne / wkid 
+livconc = ylivr / wliv 
+cortconc = ycort / wcrt 
+trabconc = ytrab / wtrb 
+boneconc = yskel / wbone 
+cortconcash = cortconc / crtashf 
+trabconcash = trabconc / trbashf 
+
+
+
+
+# line 1295 
+if ( plconc .ne. 0. ) pclear = purin / ( plconc * 10. ) 
+# line 1296 
+if ( blconc .ne. 0. ) bclear = purin / ( blconc * 10. ) 
+
+
+intake = intotal 
+
+if ( vbl .ne. 0.0 ) cblood = blconc 
+
+
+if ( vpl .ne. 0.0 ) cplas = plconc 
+
+if ( vrbc .ne. 0.0 ) crbc = rbconc 
+
+ckidney = kidconc 
+cliver = livconc 
+ccort = cortconc 
+ctrab = trabconc 
+cbone = boneconc 
+ccortash = cortconcash 
+ctrabash = trabconcash 
+ablood = yblud 
+aplas = yplas 
+arbc = yrbc 
+akidney = ykdne 
+aliver = ylivr 
+acort = ycort 
+atrab = ytrab 
+abone = yskel 
+asoft = ysoft 
+abrain = ybran 
+art = ylung 
+aurine = yurin 
+afecal = yfece 
+tbody = tbody2 
+
+
+end 
+
+discrete 
+
+end 
+# line 1530 
+if ( t .ge. tstop ) then 
+# line 1530 
+call zztrmt ( ' ' ) 
+# line 1530 
+endif 
+
+end 
+
+terminal 
+
+end 
+
+end 
+

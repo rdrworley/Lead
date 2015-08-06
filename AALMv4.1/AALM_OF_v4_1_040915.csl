@@ -1,0 +1,1334 @@
+PROGRAM: AALM_OF_v4_1_040915!-----------------------------------------------------------------
+!Created by Gary Diamond, SRC Inc, 09/15/14, as AALM_OF_v4)1_040915.csl
+!*****
+!!This program implements 
+!(1)Physiologically-based Toxicokinetic Model: Lead (Pb) in Humans as described in O'Flaherty (1993)
+!*****
+!Code for the the model was adapted from Physiologically-based Toxicokinetic Model: Lead in Humans (ACSL v10),
+	!provided to SRC by Ellen O'Flahrty (1998), and migrated to ACSL v11 and subsequently to acslX.
+!The immediate precursor csl code for AALM_OF_v0 is OFLA4 (2005)
+!*****
+
+!OFLA4 has been revised to meet requirements of EPA Order No. EP-13-H000037 (Evaluation and Application of the EPA All Ages Lead Model)
+!Revisions to OFLA4 are documented in the csl file for version 0 (06/10/13) with a "GD" notation, and include:
+!	Modifications to allow inputs (constants and TABLE parameters) to be read from AALM-OF INPUT&OUTPUT.xls
+!	Modifications to simulate discrete and pulsed exposures to Pb in air, surface dust, water, food and other
+!	Modification of GI-tract simulation to include:
+!		Simulation of distinct inputs of Pb to the stomach compartment from respiratory tract (mucocilary escalator) and ingested dust, water, food and other
+!		Simulation of distinct RBA for Pb from respiratory tract and ingested dust, water, food and other
+!	Modifications to simulate atge-dpendent soft-tissue partition coefficients
+!  Selected parameter values have been optimized as described in Final Report: Devleopment and Evaluation of AALM (June 2014)
+!
+!*****
+!Accessory files needed to run AALM-OF include command scripts (*.m) and data input and output files (*.xls):
+!	AALM-OF INPUT&OUTPUT.xlsm
+!  AALM_OF_INPUTDATA.DAT
+!	AALM_OF_OUTPUT.DAT
+!	AALM_OF_IN_v#_DATE.m
+!	AALM_OF_OUT_v#_DATE.m
+!	AALUM_OF_RUN_v#_DATA.m
+!-----------------------------------------------------------------
+!UNITS: 
+!Time: years
+!Pb mass in compartments: milligram
+!Volumes:liters
+!Tissue masses: kg
+!Blood Pb concentration: converted to ug/dL in output
+
+INITIAL  !START INITIAL SECTION
+
+!****TIMING AND INTEGRATION CONTROLS****
+ALGORITHM IALG=2      !Gear integration algorithm for stiff systems
+CINTERVAL CINT=1.     !Communication interval (yr)
+CONSTANT TSTART=0.		!Start day for simulation (day)
+CONSTANT TSTOP=50.    !Length of simulation (yr)
+CONSTANT AGE0=0.      !Age at which simulation begins (yr)
+CONSTANT AGEA=25.     !Age at which bone growth ceases and remodeling becomes the sole bone formation process (yr)
+CONSTANT DPY=365.			!Days per year 
+
+!****EXPOSURE PULSE CONTROL****
+CONSTANT CAIRPULSE=0.  !Pb concentration in AIR pulse (ug/m3)
+CONSTANT CAIRBASE=0.   !Baseline Pb concentration in AIR (when pulse is off) (ug/m3)
+CONSTANT FAIRPULSE=1.  !Fraction of exposure delivered from pulse
+CONSTANT AIRSTART=0.	 !Start of pulse (yr)
+CONSTANT AIRSTOP=90.	 !End of pulse(yr)
+CONSTANT AIRWID1=1.	  !Width of pulse 1(yr)
+CONSTANT AIRPER1=1.	  !Period of pulse 1(yr)
+CONSTANT AIRWID2=1.	  !Width of pulse 2(yr)
+CONSTANT AIRPER2=1.	  !Period of pulse 2(yr)
+
+CONSTANT CDUSTPULSE=0.  !Pb concentration in DUST pulse (ug/g)
+CONSTANT CDUSTBASE=0.   !Baseline Pb concentration in DUST (when pulse is off) (ug/g)
+CONSTANT FDUSTPULSE=1.  !Fraction of exposure delivered from pulse
+CONSTANT DUSTSTART=0. 	!Start of pulse (yr)
+CONSTANT DUSTSTOP=90. 	!End of pulse (yr)
+CONSTANT DUSTWID1=1.	  !Width of pulse 1(yr)
+CONSTANT DUSTPER1=1.	  !Period of  pulse 1(yr)
+CONSTANT DUSTWID2=1.	  !Width of pulse 2(yr)
+CONSTANT DUSTPER2=1.	  !Period of pulse 2(yr)
+
+CONSTANT CWATERPULSE=0.	!Pb concentration in WATER pulse (ug/L)
+CONSTANT CWATERBASE=0.   !Baseline Pb concentration in WATER (when pulse is off) (ug/L)
+CONSTANT FWATERPULSE=1.  !Fraction of exposure delivered from pulse
+CONSTANT WATERSTART=0.	 !Start of pulse (yr)
+CONSTANT WATERSTOP=90.	 !End of pulse (yr)
+CONSTANT WATERWID1=1.	  !Width of pulse 1(yr)
+CONSTANT WATERPER1=1.	  !Period of pulse 1(yr)
+CONSTANT WATERWID2=1.	  !Width of pulse 2(yr)
+CONSTANT WATERPER2=1.  	!Period of pulse 2(yr)
+
+CONSTANT INFOODPULSE=0.	!Pb intake from FOOD pulse (ug/day)
+CONSTANT INFOODBASE=0.	 !Baseline Pb intake from FOOD (when pulse is off) (ug/day)
+CONSTANT FFOODPULSE=1.	 !Fraction of exposure delivered from pulse
+CONSTANT FOODSTART=0.	  !Start of pulse (yr)
+CONSTANT FOODSTOP=90.	  !End of pulse (yr)
+CONSTANT FOODWID1=1.	   !Width of pulse 1(yr)
+CONSTANT FOODPER1=1.	   !Period of pulse 1(yr)
+CONSTANT FOODWID2=1.	   !Width of pulse 2(yr)
+CONSTANT FOODPER2=1.	   !Period of pulse 2(yr)
+
+CONSTANT INOTHERPULSE=0.  !Pb intake from OTHER pulse (ug/day)
+CONSTANT INOTHERBASE=1.	 !Baseline Pb intake from OTHER (when pulse is off) (ug/day)
+CONSTANT FOTHERPULSE=1.	 !Fraction of exposure delivered from pulse
+CONSTANT OTHERSTART=0.	  !Start of pulse (yr)
+CONSTANT OTHERSTOP=90.	  !End of pulse (yr)
+CONSTANT OTHERWID1=1.	   !Width of pulse 1(yr)
+CONSTANT OTHERPER1=1.	   !Period of pulse 1(yr)
+CONSTANT OTHERWID2=1.	   !Width of pulse 2(yr)
+CONSTANT OTHERPER2=1.	   !Period of pulse 2(yr)
+
+!****GASTROINTESTINAL TRACT (GIT) ABSORPTION PARAMTETER CONSTANTS****
+CONSTANT RBAAIR=1.    !RBA for AIR Pb deposited in RT and transferred to GIT (f)
+CONSTANT RBADUST=1.   !RBA for ingested DUST Pb (f)
+CONSTANT RBAWATER=1.  !RBA for ingested WATER Pb (f)
+CONSTANT RBAFOOD=1.   !RBA for ingested FOOD Pb (f)
+CONSTANT RBAOTHER=1.  !RBA for ingested OTHER Pb (f)
+CONSTANT RBAET2GI=1.  !RBA for ingested inhaled Pb (f)
+
+
+!****REPSIRATORY TRACT (RT) BIOKINETICS PARAMETER CONSTANTS****
+!****TRANSFER COEFICIENTS FOR RESPORATORY TRACT CLEARANCE****
+CONSTANT ET1EXH=1.0       !Extrathoracic to exhaled (day-1)
+CONSTANT ET2GI=100.0      !Extrathoracic to GIT (day-1)
+CONSTANT ET3ETLN=0.001    !Extrathoracic to lymph node (day-1)
+CONSTANT BB1ET2=10.0 	   !Bronchi to extrathoracic (day-1)
+CONSTANT BB2ET2=0.03      !Bronchi to extrathoracic (day-1)
+CONSTANT BB3THLN=0.01     !Bronchi to lymph node (day-1)
+CONSTANT BBO1BB1=2.0      !Bronchiolar to bronchi (day-1)
+CONSTANT BBO2BB1=0.03     !Bronchiolar to bronchi (day-1)
+CONSTANT BBO3THLN=0.01    !Bronchiolar to lymph node (day-1)
+CONSTANT AI1BBO1=0.02     !Alveolar interstitium to bronchiolar (day-1)
+CONSTANT AI2BBO1=0.001    !Alveolar interstitium to bronchiolar (day-1)
+CONSTANT AI3BBO1=0.0001   !Alveolar interstitium to bronchiolar (day-1)
+CONSTANT AI3THLN=0.00002  !Alveolar interstitium to lymph node (day-1)
+
+!****RT ABSORPTION BEHAVIOR TYPE S (SLOW)****
+CONSTANT PISPTS=100.0  !Particle initial state to transformed state (day-1)
+CONSTANT PISBL=0.1     !Particle initial state to blood (day-1)
+CONSTANT PTSBL=0.0001  !Particle transformed state to blood (day-1)
+CONSTANT FBND=0.			 !Fraction bound (f)
+CONSTANT BNDBL=0.1		 !Bound to blood (day-1)	
+
+!****FRACTION BOUND****
+IF(FBND.EQ.0.) THEN
+BNDBL2=0.
+ELSE
+BNDBL2=BNDBL
+ENDIF 
+
+PISBL2=PISBL*(1.-FBND)
+PTSBL2=PTSBL*(1.-FBND)
+PISBND=PISBL*FBND
+PTSBND=PTSBL*FBND
+
+!****GENERAL PHYSIOLOGIC PARAMETERS****
+CONSTANT YOB=2005.      !Year of birth 
+CONSTANT WBIRTH=3.5     !Weight at birth (kg)
+CONSTANT WCHILD=23.     !Maximum weight for early hyperbolic section of growth curve (kg)
+CONSTANT HALF=3.        !Age at which weight is half WCHILD (yr)
+CONSTANT WADULT=50.     !Maximum weight for later logistic section of growth curve (kg)
+CONSTANT KAPPA=600.     !Logistic constant kappa
+CONSTANT LAMBDA=0.0095  !Logistic constant lambda (1/(kg-yr))
+
+WBODY0=WBIRTH+(WCHILD*AGE0/(HALF+AGE0))+(WADULT/(1.+KAPPA*EXP(-LAMBDA*WADULT*AGE0)))
+                      !Body weight at start of simulation (kg)  
+WBODYW=WBIRTH+WCHILD*.3/(HALF+.3)+WADULT/(1.+KAPPA*EXP(-LAMBDA*WADULT*.3))  
+						!Body weight at start of weaning, set at age 0.3 year (kg)
+WBODY1=WBIRTH+WCHILD*1./(HALF+1.)+WADULT/(1.+KAPPA*EXP(-LAMBDA*WADULT*1.)) 
+						!Body weight at age 1 year (kg)
+WBODYA=WBIRTH+WCHILD*AGEA/(HALF+AGEA)+WADULT/(1.+KAPPA*EXP(-LAMBDA*WADULT*AGEA))
+                      !Body weight at age AGEA (kg)
+
+QCC=340.         !Cardiac output in the adult (L/day/kg)
+QC=QCC*365.*((WBIRTH+WADULT+WCHILD)**.74) !Cardiac output in the adult (L/yr)
+CONSTANT QLC=0.25      !Fraction cardiac output going to liver
+CONSTANT QKC=0.17      !Fraction cardiac output going to kidney
+CONSTANT QWC=0.44      !Fraction cardiac output going to other well-perfused tissues
+CONSTANT QBONEC=0.05   !Fraction cardiac output going to bone
+QPC=1.-(QLC+QKC+QWC+QBONEC) !Fraction cardiac output going to otherpoorly-perfused tissues
+
+CONSTANT VBLC=0.067    !Total blood volume (L/kg BW)
+CONSTANT VLC=0.025     !Liver volume in the adult (L/kg BW)
+CONSTANT VKC=0.0085    !Kidney volume in the adult (L/kg BW)
+CONSTANT VBLWPC=0.0576 !Volume of blood in well-perfused tissues (L/kg BW)
+CONSTANT VWC=0.16      !Volume of well-perfused tissues, including blood, liver and kidney, in the adult (L/kg BW)
+VPC=1.-VWC             !Volume of poorly-perfused tissues, including bone, in the adult (L/kg BW)
+
+CONSTANT HCTA=0.46     !Hematocrit in the adult
+CONSTANT SGST=1.05		 !Soft tissue specific gravity  <<GD 8/21/13>>
+
+
+!****BONE PARAMETERS****
+CONSTANT CRTASHF=0.55	   !Cortical bone ash (fraction of weight) <<GD 02/21/14>>
+CONSTANT TRBASHF=0.50		 !Trabecular bone ash (fraction of weight) <<GD 02/21/14>>
+CONSTANT D0=5.E-7         !Diffusion constant (cm/da/.5E-4 cm)
+CONSTANT R0=5.E-7         !Permeability constant (cm/da/.5E-4 cm)
+CONSTANT P0=0.02			    !Permeability constant (cm/da/.5E-4 cm)
+CONSTANT PI=3.141592      !Value of pi
+L=1000./(PI*(RAD8**2.))   !Total canalicule length per liter of bone ((no. canalicules/cm3)*(1-cm length
+                      		!/canalicule/cm3)*(1000 cm3/L bone))(cm/L)
+
+CONSTANT S=0.000126       !Surface area of canalicule (cm2/cm canalicule length)
+CONSTANT RAD1=0.000027    !Radii of the eight shells of bone in the canalicular
+CONSTANT RAD2=0.000052    !diffusion region of deeper bone (cm)
+CONSTANT RAD3=0.000079 
+CONSTANT RAD4=0.000106 
+CONSTANT RAD5=0.000133 
+CONSTANT RAD6=0.000160 
+CONSTANT RAD7=0.000187 
+CONSTANT RAD8=0.000214 
+
+S1=2.*PI*RAD1         !Surface areas of the eight shells of bone in the
+S2=2.*PI*RAD2         !canalicular (diffusion) region of deeper bone
+S3=2.*PI*RAD3         !(cm2/cm canalicule length)
+S4=2.*PI*RAD4         
+S5=2.*PI*RAD5         
+S6=2.*PI*RAD6         
+S7=2.*PI*RAD7         
+S8=2.*PI*RAD8        
+
+V1=PI*(RAD1**2.)      !Volumes of the eight shells of bone in the canalicular
+V2=PI*(RAD2**2.)-V1   !(diffusion) region of deeper bone (cm3/cm canalicule length)
+V3=PI*(RAD3**2.)-(V1+V2)                    
+V4=PI*(RAD4**2.)-(V1+V2+V3)                    
+V5=PI*(RAD5**2.)-(V1+V2+V3+V4)                   
+V6=PI*(RAD6**2.)-(V1+V2+V3+V4+V5)                    
+V7=PI*(RAD7**2.)-(V1+V2+V3+V4+V5+V6)                   
+V8=PI*(RAD8**2.)-(V1+V2+V3+V4+V5+V6+V7)
+                     
+
+!****LEAD PARAMETERS****
+CONSTANT PKZ=25.      !Kidney/plasma partition coefficientat birth <<GD 02/17/14>>
+CONSTANT PKAGE=0.0		 !Exponential coefficient for age-dependence of PK <<GD 02/17/14>>
+CONSTANT PLZ=25.      !Liver/plasma partition coefficient at birth <<GD 02/17/14>>
+CONSTANT PLAGE=0.0		 !Exponential coefficient for age-dependence of PL <<GD 02/17/14>>
+CONSTANT PWZ=25.     !Well-perfused tissue/plasma partition coefficientat birth <<GD 02/17/14>>
+CONSTANT PWAGE=0.0		 !Exponential coefficient for age-dependence of PW <<GD 02/17/14>>
+!CONSTANT PL=50.       !Liver/plasma partition coefficient  <<GD 02/17/14>>
+!CONSTANT PK=50.       !Kidney/plasma partition coefficient  <<GD 02/17/14>>
+!CONSTANT PW=50.       !Well-perfused tissue/plasma partition coefficient  <<GD 02/17/14>> 
+CONSTANT PP=2.        !Poorly-perfused tissue/plasma partition coefficient
+CONSTANT LEAD=15000.  !Fractional clearance of lead from plasma into forming bone (L plasma cleared/L bone formed) 
+!CONSTANT BIND=2.7     !Maximum capacity of sites in red cells to bind Pb (mg/L of red cell volume)  <<<GD 08/15/14>>>
+CONSTANT BINDC1=0.79		 !Constant for age-dependent maximum capacity of sites in red cells to bind Pb  <<<GD 08/15/14>>>
+CONSTANT BINDC2=0.70		!Constant for age-dependent maximum capacity of sites in red cells to bind Pb   <<<GD 08/15/14>>>
+CONSTANT BINDC3=0.0		 !Constant for age-dependent maximum capacity of sites in red cells to bind Pb  <<<GD 08/15/14>>>
+!CONSTANT KBIND=0.0075 !Half-saturation concentration of Pb for binding by sites in red cells (mg/L of red cell volume)
+CONSTANT KBINDC1=0.0004		 !Constant for age-dependent maximum capacity of sites in red cells to bind Pb  <<<GD 08/15/14>>>
+CONSTANT KBINDC2=0.00134		!Constant for age-dependent maximum capacity of sites in red cells to bind Pb   <<<GD 08/15/14>>>
+CONSTANT KBINDC3=0.0		 !Constant for age-dependent maximum capacity of sites in red cells to bind Pb  <<<GD 08/15/14>>>
+CONSTANT KBINDCZ=0.003   !Constant for age-dependent maximum capacity of sites in red cells to bind Pb  <<<GD 08/15/14>>>
+
+CONSTANT G=1.2        !Linear parameter for unbound lead in red cells
+
+!***INITIAL Pb MASSES IN RESPIRATORY TRACT TISSUES****
+YET1Z=0.
+YET2ISZ=0.
+YET2TSZ=0.
+YET2BNDZ=0.
+YEXHZ=0.
+YET3ISZ=0.
+YET3TSZ=0.
+YET3BNDZ=0.
+YETLNISZ=0.
+YETLNTSZ=0.
+YETLNBNDZ=0.
+YBB1ISZ=0.
+YBB1TSZ=0.
+YBB1BNDZ=0.
+YBB2ISZ=0.
+YBB2TSZ=0.
+YBB2BNDZ=0.
+YBB3ISZ=0.
+YBB3TSZ=0.
+YBB3BNDZ=0.
+YBBO1ISZ=0.
+YBBO1TSZ=0.
+YBBO1BNDZ=0.
+YBBO2ISZ=0.
+YBBO2TSZ=0.
+YBBO2BNDZ=0.
+YBBO3ISZ=0.
+YBBO3TSZ=0.
+YBBO3BNDZ=0.
+YTHLNISZ=0.
+YTHLNTSZ=0.
+YTHLNBNDZ=0.
+YAI1ISZ=0.
+YAI1TSZ=0.
+YAI1BNDZ=0.
+YAI2ISZ=0.
+YAI2TSZ=0.
+YAI2BNDZ=0.
+YAI3ISZ=0.
+YAI3TSZ=0.
+YAI3BNDZ=0.
+
+!***INITIAL Pb MASSES AT BIRTH*** <GD 06/19/13>
+CONSTANT MATBLD=1.         !Maternal blood Pb ug/dL (SYSTEMIC INPUT)
+MBL=MATBLD/100.	          !Maternal blood Pb (mg/L)
+CONSTANT VBLZ=0.225        !Blood volume at birth (L)
+CONSTANT FEMATBL=0.85      !Fetal/maternal blood Pb ratio
+CONSTANT FABLZ=0.05        !Blood/total body burden Pb mass ratio at birth
+CONSTANT FAKZ=0.003         !Kidney/total body burden Pb mass ratio at birth
+CONSTANT FALZ=0.009        !Liver/total body burden Pb mass ratio at birth
+CONSTANT FABZ=0.90         !Bone/total body burden Pb mass ratio at birth
+CONSTANT FAOZ=0.04	       !Other tissues/total body burden Pb mass ratio at birth	
+FAWZ=FAOZ*0.8              !Well-perfused/total body burden Pb mass ratio at birth
+FAPZ=1-(FABLZ+FAKZ+FALZ+FAWZ+FABZ) !Poorly-perfused/total body burden Pb mass ratio at birth
+
+ABLZ=MBL*FEMATBL*VBLZ      !Amount of Pb in blood at birth
+BURDENZ=ABLZ/FABLZ		     !Amount of Pb in blood at birth
+AKZ=BURDENZ*FAKZ           !Amount of Pb in kidney at birth
+ALZ=BURDENZ*FALZ           !Amount of Pb in liver at birth
+AWZ=BURDENZ*FAWZ           !Amount of Pb in well-perfused tissues at birth
+APZ=BURDENZ*FAPZ           !Amount of Pb in poorly-perfused tissues at birth
+CAMCZ=BURDENZ*FABZ*0.8     !Amount of Pb in metabolically active cortical bone at birth
+TAMCZ=BURDENZ*FABZ*0.2    !Amount of Pb in metabolically active trabecular bone at birth
+
+
+ 
+END      !END OF INITIAL SECTION
+
+
+DYNAMIC	!START OF DYNAMIC SECTION
+
+
+DERIVATIVE	!START OF DERIVATIVE SECTION
+
+AGE=AGE0+T        !Age (yr)
+YEAR=YOB+AGE      !Calendar year
+AGEDAY=AGE*365.			!Age (day)
+ 
+!****AGE-DEPENDENT EXPOSURE AND INTAKE VARIABLE ARRAYS****
+TABLE CAIR,1,50/50*0.0,50*0.0/      !Age array of AIR Pb concentrations (ug/m3)
+TABLE VENT,1,50/50*1.0,50*1.0/      !Age array of ventilation rates (m3/day)
+TABLE CDUST,1,50/50*1.0,50*1.0/     !Age array of DUST Pb concentrations (ug/g)
+TABLE IRDUST,1,50/50*1.0,50*1.0/    !Age array of DUST intake rates (g/day)
+TABLE CWATER,1,50/50*1.0,50*1.0/    !Age array of WATER Pb concentrations (ug/L)
+TABLE IRWATER,1,50/50*1.0,50*1.0/   !Age array of WATER intake rates (L/day)
+TABLE INFOOD,1,50/50*1.0,50*1.0/    !Age array of FOOD Pb intakes (ug/day)
+TABLE INOTHER,1,50/50*1.0,50*1.0/   !Age array of OTHER Pb intakes (ug/day)
+
+!****EXPOSURE-INTAKE SIMULATIONS****
+!****Pb intake units converted from ug/yr to mg/yr****
+AIRPULSE=PULSE(AIRSTART,AIRPER1,AIRWID1)*PULSE(AIRSTART,AIRPER2,AIRWID2)
+DUSTPULSE=PULSE(DUSTSTART,DUSTPER1,DUSTWID1)*PULSE(DUSTSTART,DUSTPER2,DUSTWID2)
+WATERPULSE=PULSE(WATERSTART,WATERPER1,WATERWID1)*PULSE(WATERSTART,WATERPER2,WATERWID2)
+FOODPULSE=PULSE(FOODSTART,FOODPER1,FOODWID1)*PULSE(FOODSTART,FOODPER2,FOODWID2)
+OTHERPULSE=PULSE(OTHERSTART,OTHERPER1,OTHERWID1)*PULSE(OTHERSTART,OTHERPER2,OTHERWID2)
+
+!<<<GD 03/04/14>>>
+!INAIRTOTAL=VENT(T)*(((CAIRBASE+CAIRPULSE*AIRPULSE)*FAIRPULSE)+(CAIR(T)*(1.-FAIRPULSE)))
+!INDUSTTOTAL=IRDUST(T)*(((CDUSTBASE+CDUSTPULSE*DUSTPULSE)*FDUSTPULSE)+(CDUST(T)*(1.-FDUSTPULSE)))
+!INWATERTOTAL=IRWATER(T)*(((CWATERBASE+CWATERPULSE*WATERPULSE)*FWATERPULSE)+(CWATER(T)*(1.-FWATERPULSE)))
+!INFOODTOTAL=((INFOODBASE+INFOODPULSE*FOODPULSE)*FFOODPULSE)+(INFOOD(T)*(1.-FFOODPULSE))
+!INOTHERTOTAL=((INOTHERBASE+INOTHERPULSE*OTHERPULSE)*FOTHERPULSE)+(INOTHER(T)*(1.-FOTHERPULSE))
+!INTOTAL=INAIRTOTAL+INDUSTTOTAL+INWATERTOTAL+INFOODTOTAL+INOTHERTOTAL  !<<GD 8/19/13>>
+
+IF (T>AIRSTOP) THEN
+	INAIRTOTAL= (VENT(T)*(CAIRBASE*FAIRPULSE+CAIR(T)*(1-FAIRPULSE)))*365./1000.
+ELSE
+	INAIRTOTAL=(VENT(T)*((CAIRBASE+CAIRPULSE*AIRPULSE)*FAIRPULSE+CAIR(T)*(1-FAIRPULSE)))*365./1000.
+END IF
+
+IF (T>DUSTSTOP) THEN
+	INDUSTTOTAL= (IRDUST(T)*(CDUSTBASE*FDUSTPULSE+CDUST(T)*(1-FDUSTPULSE)))*365./1000.
+ELSE
+	INDUSTTOTAL=(IRDUST(T)*((CDUSTBASE+CDUSTPULSE*DUSTPULSE)*FDUSTPULSE+CDUST(T)*(1-FDUSTPULSE)))*365./1000.
+END IF
+
+IF (T>WATERSTOP) THEN
+	INWATERTOTAL= (IRWATER(T)*(CWATERBASE*FWATERPULSE+CWATER(T)*(1-FWATERPULSE)))*365./1000.
+ELSE
+	INWATERTOTAL=(IRWATER(T)*((CWATERBASE+CWATERPULSE*WATERPULSE)*FWATERPULSE+CWATER(T)*(1-FWATERPULSE)))*365./1000.
+END IF
+
+IF (T>FOODSTOP) THEN
+	INFOODTOTAL=(INFOODBASE*FFOODPULSE+INFOOD(T)*(1-FFOODPULSE))*365./1000.
+ELSE
+	INFOODTOTAL=((INFOODBASE+INFOODPULSE*FOODPULSE)*FFOODPULSE+INFOOD(T)*(1-FFOODPULSE))*365./1000.
+END IF
+
+IF (T>OTHERSTOP) THEN
+	INOTHERTOTAL=(INOTHERBASE*FOTHERPULSE+INOTHER(T)*(1-FOTHERPULSE))*365./1000.
+ELSE
+	INOTHERTOTAL=((INOTHERBASE+INOTHERPULSE*OTHERPULSE)*FOTHERPULSE+INOTHER(T)*(1-FOTHERPULSE))*365./1000.
+END IF
+
+INTOTAL=INAIRTOTAL+INDUSTTOTAL+INWATERTOTAL+INFOODTOTAL+INOTHERTOTAL !Total Pb intake from ingestion (mg/yr) <<GD 8/19/13>>
+
+!****AGE DEPENDENT GASTROINTESTINAL TRACT (GIT) ABSORPTION FRACTIONS****
+TABLE AF1,1,20/20*1.0,20*1.0/ 	
+AFT=AF1(T) !Output variable for AF1 
+					
+!****AGE-DEPENDENT RESPIRATORY TRACT (RT) DEPOSITION FRACTIONS****
+TABLE FET1,1,9/9*1.0,9*1.0/
+TABLE FET2,1,9/9*1.0,9*1.0/
+TABLE FET3,1,9/9*1.0,9*1.0/
+TABLE FBB1,1,9/9*1.0,9*1.0/		 
+TABLE FBB2,1,9/9*1.0,9*1.0/		 
+TABLE FBB3,1,9/9*1.0,9*1.0/
+TABLE FBBO1,1,9/9*1.0,9*1.0/
+TABLE FBBO2,1,9/9*1.0,9*1.0/
+TABLE FBBO3,1,9/9*1.0,9*1.0/
+TABLE FAI1,1,9/9*1.0,9*1.0/
+TABLE FAI2,1,9/9*1.0,9*1.0/
+TABLE FAI3,1,9/9*1.0,9*1.0/
+	
+FRT=FET1(T)+FET2(T)+FET3(T)+FBB1(T)+FBB2(T)+FBB3(T)+FBBO1(T)+FBBO2(T)+FBBO3(T)+FAI1(T)+FAI2(T)+FAI3(T)
+
+
+!**Scaled and Other Derived Parameters**
+WBODY=WBIRTH+WCHILD*AGE/(HALF+AGE)+WADULT/(1.+KAPPA*EXP(-LAMBDA*WADULT*AGE)) 
+                       	 !Body weight as a function of age (kg)
+WSKEL=.058*WBODY**1.21 	 !Skeletal weight (kg)
+VBONE=.0168*WBODY**1.188  !Bone volume (L) 
+CVBONE=0.8*VBONE          !Cortical bone volume (L)
+TVBONE=VBONE-CVBONE       !Trabecular bone volume (L)
+WBONE=.0290*WBODY**1.21   !Bone weight (kg)
+DBONE=WBONE/VBONE         !Bone density (g/cm3)
+WMARR=.00702*WBODY**1.46  !Marrow weight (kg)
+WMFDB=.0226*WBODY**1.23   !Marrow-free dry bone weight (kg)
+WASH=.0138*WBODY**1.25    !Ash weight (kg)
+CABONE=.005236*WBODY**1.25  !Bone calcium (kg)
+CAAGEA=.005236*WBODYA**1.25 !Bone calcium at age AGEA (kg)
+
+P=365.*P0/DBONE      !Permeability constant for diffusion across the
+                     !canalicule-bone interface from canalicule to
+                     !bone (cm/yr/.5E-4cm) 
+
+R=365.*R0/DBONE      !Permeability constant for diffusion across the
+                     !canalicule-bone interface from bone to
+                     !canalicule (cm/yr/.5E-4cm)
+
+D=365.*D0/DBONE      !Permeability constant for diffusion within bone
+                     !(cm/yr/.5E-4cm)
+
+QCG=QC*((WBODY/(WBIRTH+WADULT+WCHILD))**.85)
+                      !Cardiac blood output (L/yr)
+
+QL=QLC*QCG            !Blood flow to liver (L/yr)
+QK=QKC*QCG            !Blood flow to kidney (L/yr)
+QW=QWC*QCG            !Blood flow to other well-perfused tissues (L/yr)
+QB=QBONEC*QCG         !Blood flow to bone (L/dyr)
+
+CONSTANT CON=0.65
+TQB=CON*QB            !Blood flow to trabecular bone (L/yr)
+TQBC=TQB*TBFRC/TBFR   !Blood flow to trabecular bone engaged in active
+                      !modeling during growth (L/yr)
+TQBA=TQB-TQBC         !Blood flow to trabecular bone engaged in adult-type 
+                      !remodeling (L/yr)
+
+CQB=QB-TQB            !Blood flow to cortical bone (L/yr)
+CQBC=CQB*CBFRC/CBFR   !Blood flow to cortical bone engaged in active
+                      !modeling during growth (L/yr)
+CQBA=CQB-CQBC         !Blood flow to cortical bone engaged in adult-type
+                      !remodeling (L/yr)
+
+BBFR=QB/WBONE         !Specific bone blood flow rate (L/yr/kg bone
+
+QP=QCG-(QL+QK+QW+QB)  !Blood flow to other poorly-perfused
+                      !tissues (L/yr)
+
+VBL=VBLC*WBODY        !Total blood volume (L)
+VBLWP=VBLWPC*WBODY    !Blood volume in well-perfused tissues (L)
+VBLPP=VBL-VBLWP       !Blood volume in poorly-perfused tissues (L)
+
+VL=VLC*(WBIRTH+WADULT+WCHILD)*((WBODY/(WBIRTH+WADULT&
+     +WCHILD))**.85)  !Liver volume (L)
+VK=VKC*(WBIRTH+WADULT+WCHILD)*((WBODY/(WBIRTH+WADULT&
+     +WCHILD))**.84)  !Kidney volume (L)
+VWT=VWC*(WBIRTH+WADULT+WCHILD)*((WBODY/(WBIRTH+WADULT&
+     +WCHILD))**.85)  !Total volume of well-perfused tissues (L)
+VW=VWT-(VL+VK+VBLWP)  !Volume of other well-perfused tissues (L)
+VP=WBODY-(VWT+VBONE+VBLPP)
+                      !Volume of other poorly-perfused tissues (L) 
+
+!**Condition for Termination of Run**
+TERMT(T.GE.TSTOP)
+
+ 
+!****KINETICS****
+
+!****BODY AND BONE GROWTH****
+RWBODY=HALF*WCHILD/((HALF+AGE)**2.)+KAPPA*LAMBDA*(WADULT**2.)*&
+      EXP(-LAMBDA*WADULT*AGE)/((1.+KAPPA*EXP(-LAMBDA*WADULT*&
+      AGE))**2.)      !Rate of change of body weight (kg/yr)
+
+RWBONE=1.21*.0290*(WBODY**.21)*RWBODY
+                      !Rate of change of bone weight (kg/yr) 
+RVBONE=1.188*.0168*(WBODY**.188)*RWBODY
+                      !Rate of change of bone volume (L/yr)
+RCBONE=1.25*.005236*(WBODY**.25)*RWBODY
+                      !Rate of change of calcium content of bone
+                      !(kg/yr)
+FCBONE=RCBONE/CABONE  !Fractional rate of change of either calcium
+                      !content of bone or of bone weight (1/yr)
+
+CONSTANT A1=4.
+CONSTANT A2=0.4
+CONSTANT A3=4.
+A4=1.57/(CUTOFF-1.)
+CONSTANT A5=0.6
+PART1=A1*EXP(-A2*AGE)
+PART2=A3*SIN(A4*AGE)
+CONSTANT CUTOFF=11.
+CONSTANT BASE=0.10
+FBFR=RSW(AGE.LE.CUTOFF,BASE+PART1+PART2,BASE+(A1*EXP(-(CUTOFF*A2))&
+     +A3*SIN(A4*CUTOFF))*EXP(-A5*(AGE-CUTOFF)))
+
+BFRCA=FBFR*CABONE     !Bone formation rate (by calcium) (kg/yr) 
+TBFRCA=CON*BFRCA      !Trabecular bone formation rate (by calcium) (kg/yr)
+CBFRCA=BFRCA-TBFRCA   !Cortical bone formation rate (by calcium) (kg/yr)
+
+BFR=FBFR*VBONE        !Total bone formation rate (by volume) (L/yr)
+TBFR=CON*BFR          !Trabecular bone formation rate (by volume) (L/yr)
+CBFR=BFR-TBFR         !Cortical bone formation rate (by volume) (L/yr)
+
+TFBFR=TBFR/TVBONE     !Fractional trabecular bone formation rate (1/yr)
+CFBFR=CBFR/CVBONE     !Fractional cortical bone formation rate (1/yr)
+
+CRVAF=LEAD*CBFR       !Clearance of lead from blood during mineralization 
+                      !of newly-apposed cortical bone (L/yr)
+TRVAF=LEAD*TBFR       !Clearance of lead from blood during mineralization 
+                      !of newly-apposed trabecular bone (L/yr)
+
+BRR=BFR-RVBONE        !Total bone resorption rate (L/yr)
+TBRR=BRR*TBFR/BFR     !Trabecular bone resorption rate (L/yr)
+CBRR=BRR-TBRR         !Cortical bone resorption rate (L/yr)
+
+FBRR=BRR/VBONE        !Fractional total bone resorption rate (1/yr) 
+TFBRR=TBRR/TVBONE     !Fractional trabecular bone resorption rate (1/yr)
+CFBRR=CBRR/CVBONE     !Fractional cortical bone resorption rate (1/yr)
+
+VBAGEA=.0168*WBODYA**1.188
+                      !Total bone volume at age AGEA (L)
+CVBAGEA=0.8*VBAGEA    !Cortical bone volume at age AGEA (L)
+TVBAGEA=VBAGEA-CVBAGEA
+                      !Trabecular bone volume at age AGEA (L)
+
+BFAGEA=FBFR*VBAGEA    !Total bone formation rate (by volume) at age AGEA
+                      !(L/yr)
+TBFAGEA=TFBFR*TVBAGEA !Trabecular bone formation rate (by volume) at age 
+                      !AGEA (L/yr)
+CBFAGEA=BFAGEA-TBFAGEA
+                      !Cortical bone formation rate (by volume) at age       
+                      !AGEA (L/yr)
+
+CCHECK=DERIVT(0.,CVBONE*(AGE/AGEA)**EXPO)
+TCHECK=DERIVT(0.,TVBONE*(AGE/AGEA)**EXPO)
+
+PROCEDURAL (CVBONEA,TVBONEA,CVBONEC,TVBONEC,CBFRC,TBFRC,CBFRA,&
+TBFRA,CRFBON,TRFBON,CBRRA,TBRRA,CBRRC,TBRRC=1,1,1,1,1,1,1,1,1,1,1,1,1,1)
+IF (AGE.EQ.0.) GOTO BIRTH
+GOTO LATER
+LATER:CONTINUE
+IF(AGE.LT.AGEA) GOTO YOUNG
+GOTO ADULT
+YOUNG:CONTINUE
+     CONSTANT EXPO=0.6
+     CVBONEA=CVBONE*(AGE/AGEA)**EXPO
+                      !Cortical bone volume participating in adult-type 
+                      !bone remodeling (L)
+     TVBONEA=TVBONE*(AGE/AGEA)**EXPO
+                      !Trabecular bone volume participating in adult-type 
+                      !bone remodeling (L)
+     CVBONEC=CVBONE-CVBONEA
+                      !Cortical bone volume participating in active bone
+                      !modeling during growth (L)
+     TVBONEC=TVBONE-TVBONEA
+                      !Trabecular bone volume participating in active bone
+                      !modeling during growth (L)
+     CRFBON=(CVBONE*EXPO/AGEA)*((1.E-33+AGE/AGEA)**(EXPO-1.))+.8*RVBONE
+     TRFBON=(TVBONE*EXPO/AGEA)*((1.E-33+AGE/AGEA)**(EXPO-1.))+.2*RVBONE
+
+                      !Fractional rate of transfer of lead from BONEC to
+                      !BONEA (1/yr)
+     CBFRA=CBFR*CVBONEA/CVBAGEA
+                      !Formation rate of cortical bone participating in
+                      !adult-type bone remodeling (by volume of bone) (L/yr)
+     TBFRA=TBFR*TVBONEA/TVBAGEA
+                      !Formation rate of trabecular bone participating in
+                      !adult-type bone remodeling (by volume of bone) (L/yr)
+     CBFRC=RSW(CBFRA.LE.CBFR,CBFR-CBFRA,0.)
+                      !Formation rate of cortical bone participating in active
+                      !modeling during growth (by volume of bone) (L/yr) 
+     TBFRC=RSW(TBFRA.LE.TBFR,TBFR-TBFRA,0.)
+                      !Formation rate of trabecular bone participating in 
+                      !active modeling during growth (by volume of bone)
+                      !(L/yr) 
+     CBRRC=CBRR*CBFRC/CBFR   
+                      !Resorption rate of cortical bone participating in
+                      !active modeling during growth (by volume of bone)
+                      !(L/yr)
+     TBRRC=TBRR*TBFRC/TBFR   
+                      !Resorption rate of trabecular bone participating in 
+                      !active modeling during growth (by volume of bone)
+                      !(L/yr)
+     CBRRA=CBRR-CBRRC       
+                      !Resorption rate of cortical bone participating in
+                      !adult-type remodeling (by volume of bone) (L/yr)
+     TBRRA=TBRR-TBRRC       
+                      !Resorption rate of trabecular bone participating in
+                      !adult-type remodeling (by volume of bone) (L/yr)
+GOTO TERM
+ADULT:CONTINUE
+     CVBONEC=0.
+     CVBONEA=CVBONE
+     CRFBON=0.
+     CBFRA=CBFR
+     CBFRC=CBFR-CBFRA
+     CBRRC=CBRR*CBFRC/CBFR
+     CBRRA=CBRR
+     TVBONEC=0.
+     TVBONEA=TVBONE
+     TRFBON=0.
+     TBFRA=TBFR
+     TBFRC=TBFR-TBFRA
+     TBRRC=TBRR*TBFRC/TBFR
+     TBRRA=TBRR
+GOTO TERM
+BIRTH:CONTINUE
+     CVBONEC=CVBONE
+     CVBONEA=0.
+     CRFBON=0.
+     CBFRA=CBFAGEA*CVBONEA/CVBONE
+     CBFRC=CBFR-CBFRA
+     CBRRC=CBRR*CBFRC/CBFR
+     CBRRA=CBRR-CBRRC
+     TVBONEC=TVBONE
+     TVBONEA=0.
+     TRFBON=0.
+     TBFRA=TBFAGEA*TVBONEA/TVBONE
+     TBFRC=TBFR-TBFRA
+     TBRRC=TBRR*TBFRC/TBFR
+     TBRRA=TBRR-TBRRC
+GOTO TERM
+TERM:CONTINUE
+END
+
+
+!****EXTRATHORACIC COMPARTMENTS****
+INET1=INAIRTOTAL*FET1(T)
+OUTET1=YET1*ET1EXH
+DET1=INET1-OUTET1
+YET1=INTEG(DET1,YET1Z)
+
+YEXH=INTEG(OUTET1,YEXHZ)
+
+INET2IS=INAIRTOTAL*FET2(T)+YBB1IS*BB1ET2+YBB2IS*BB2ET2
+OUTET2IS=YET2IS*(ET2GI+PISPTS+PISBL2+PISBND)
+DET2IS=INET2IS-OUTET2IS
+YET2IS=INTEG(DET2IS,YET2ISZ)
+
+INET2TS=YET2IS*PISPTS+YBB1TS*BB1ET2+YBB2TS*BB2ET2
+OUTET2TS=YET2TS*(ET2GI+PTSBL2+PTSBND)
+DET2TS=INET2TS-OUTET2TS
+YET2TS=INTEG(DET2TS,YET2TSZ)
+
+INET2BND=YET2IS*PISBND+YET2TS*PTSBND
+OUTET2BND=YET2BND*BNDBL2
+DET2BND=INET2BND-OUTET2BND
+YET2BND=INTEG(DET2BND,YET2BNDZ)
+
+DET2GI=YET2*ET2GI
+YET2GIZ=0.
+YET2GI=INTEG(DET2GI,YET2GIZ)
+
+INET3IS=INAIRTOTAL*FET3(T)
+OUTET3IS=YET3IS*(PISPTS+PISBL2+PISBND+ET3ETLN)
+DET3IS=INET3IS-OUTET3IS
+YET3IS=INTEG(DET3IS,YET3ISZ)
+
+INET3TS=YET3IS*PISPTS
+OUTET3TS=YET3TS*(ET3ETLN+PTSBL2+PTSBND)
+DET3TS=INET3TS-OUTET3TS
+YET3TS=INTEG(DET3TS,YET3TSZ)
+
+INET3BND=YET3IS*PISBND+YET3TS*PTSBND
+OUTET3BND=YET3BND*BNDBL2
+DET3BND=INET3BND-OUTET3BND
+YET3BND=INTEG(DET3BND,YET3BNDZ)
+
+INETLNIS=YET3IS*ET3ETLN
+OUTETLNIS=YETLNIS*(PISPTS+PISBL2+PISBND)
+DETLNIS=INETLNIS-OUTETLNIS
+YETLNIS=INTEG(DETLNIS,YETLNISZ)
+
+INETLNTS=YETLNIS*PISPTS+YET3TS*ET3ETLN
+OUTETLNTS=YETLNTS*(PTSBL2+PTSBND)
+DETLNTS=INETLNTS-OUTETLNTS
+YETLNTS=INTEG(DETLNTS,YETLNTSZ)
+
+INETLNBND=YETLNIS*PISBND+YETLNTS*PTSBND
+OUTETLNBND=YETLNBND*BNDBL2
+DETLNBND=INETLNBND-OUTETLNBND
+YETLNBND=INTEG(DETLNBND,YETLNBNDZ)
+
+!****BRONCHI (BB) AND BRONCHIOLES (BBO)****
+INBB1IS=INAIRTOTAL*FBB1(T)+YBBO1IS*BBO1BB1+YBBO2IS*BBO2BB1
+OUTBB1IS=YBB1IS*(BB1ET2+PISPTS+PISBL2+PISBND)
+DBB1IS=INBB1IS-OUTBB1IS
+YBB1IS=INTEG(DBB1IS,YBB1ISZ)
+
+INBB1TS=YBB1IS*PISPTS+YBBO1TS*BBO1BB1+YBBO2TS*BBO2BB1
+OUTBB1TS=YBB1TS*(BB1ET2+PTSBL2+PTSBND)
+DBB1TS=INBB1TS-OUTBB1TS
+YBB1TS=INTEG(DBB1TS,YBB1TSZ)
+
+INBB1BND=YBB1IS*PISBND+YBB1TS*PTSBND
+OUTBB1BND=YBB1BND*BNDBL2
+DBB1BND=INBB1BND-OUTBB1BND
+YBB1BND=INTEG(DBB1BND,YBB1BNDZ)
+
+INBB2IS=INAIRTOTAL*FBB2(T)
+OUTBB2IS=YBB2IS*(BB2ET2+PISPTS+PISBL2+PISBND)
+DBB2IS=INBB2IS-OUTBB2IS
+YBB2IS=INTEG(DBB2IS,YBB2ISZ)
+
+INBB2TS=YBB2IS*PISPTS
+OUTBB2TS=YBB2TS*(BB2ET2+PTSBL2+PTSBND)
+DBB2TS=INBB2TS-OUTBB2TS
+YBB2TS=INTEG(DBB2TS,YBB2TSZ)
+
+INBB2BND=YBB2IS*PISBND+YBB2TS*PTSBND
+OUTBB2BND=YBB2BND*BNDBL2
+DBB2BND=INBB2BND-OUTBB2BND
+YBB2BND=INTEG(DBB2BND,YBB2BNDZ)
+
+INBB3IS=INAIRTOTAL*FBB3(T)
+OUTBB3IS=YBB3IS*(BB3THLN+PISPTS+PISBL2+PISBND)
+DBB3IS=INBB3IS-OUTBB3IS
+YBB3IS=INTEG(DBB3IS,YBB3ISZ)
+
+INBB3TS=YBB3IS*PISPTS
+OUTBB3TS=YBB3TS*(BB3THLN+PTSBL2+PTSBND)
+DBB3TS=INBB3TS-OUTBB3TS
+YBB3TS=INTEG(DBB3TS,YBB3TSZ)
+
+INBB3BND=YBB3IS*PISBND+YBB3TS*PTSBND
+OUTBB3BND=YBB3BND*BNDBL2
+DBB3BND=INBB3BND-OUTBB3BND
+YBB3BND=INTEG(DBB3BND,YBB3BNDZ)
+
+INBBO1IS=INAIRTOTAL*FBBO1(T)+YAI1IS*AI1BBO1+YAI2IS*AI2BBO1+YAI3IS*AI3BBO1
+OUTBBO1IS=YBBO1IS*(BBO1BB1+PISPTS+PISBL2+PISBND)
+DBBO1IS=INBBO1IS-OUTBBO1IS
+YBBO1IS=INTEG(DBBO1IS,YBBO1ISZ)
+
+INBBO1TS=YBBO1IS*PISPTS+YAI1TS*AI1BBO1+YAI2TS*AI2BBO1+YAI3TS*AI3BBO1
+OUTBBO1TS=YBBO1TS*(BBO1BB1+PTSBL2+PTSBND)
+DBBO1TS=INBBO1TS-OUTBBO1TS
+YBBO1TS=INTEG(DBBO1TS,YBBO1TSZ)
+
+INBBO1BND=YBBO1IS*PISBND+YBBO1TS*PTSBND
+OUTBBO1BND=YBBO1BND*BNDBL2
+DBBO1BND=INBBO1BND-OUTBBO1BND
+YBBO1BND=INTEG(DBBO1BND,YBBO1BNDZ)
+
+INBBO2IS=INAIRTOTAL*FBBO2(T)
+OUTBBO2IS=YBBO2IS*(BBO2BB1+PISPTS+PISBL2+PISBND)
+DBBO2IS=INBBO2IS-OUTBBO2IS
+YBBO2IS=INTEG(DBBO2IS,YBBO2ISZ)
+
+INBBO2TS=YBBO2IS*PISPTS
+OUTBBO2TS=YBBO2TS*(BBO2BB1+PTSBL2+PTSBND)
+DBBO2TS=INBBO2TS-OUTBBO2TS
+YBBO2TS=INTEG(DBBO2TS,YBBO2TSZ)
+
+INBBO2BND=YBBO2IS*PISBND+YBBO2TS*PTSBND
+OUTBBO2BND=YBBO2BND*BNDBL2
+DBBO2BND=INBBO2BND-OUTBBO2BND
+YBBO2BND=INTEG(DBBO2BND,YBBO2BNDZ)
+
+INBBO3IS=INAIRTOTAL*FBBO3(T)
+OUTBBO3IS=YBBO3IS*(PISPTS+BBO3THLN+PISBL2+PISBND)
+DBBO3IS=INBBO3IS-OUTBBO3IS
+YBBO3IS=INTEG(DBBO3IS,YBBO3ISZ)
+
+INBBO3TS=YBBO3IS*PISPTS
+OUTBBO3TS=YBBO3TS*(BBO3THLN+PTSBL2+PTSBND)
+DBBO3TS=INBBO3TS-OUTBBO3TS
+YBBO3TS=INTEG(DBBO3TS,YBBO3TSZ)
+
+INBBO3BND=YBBO3IS*PISBND+YBBO3TS*PTSBND
+OUTBBO3BND=YBBO3BND*BNDBL2
+DBBO3BND=INBBO3BND-OUTBBO3BND
+YBBO3BND=INTEG(DBBO3BND,YBBO3BNDZ)
+
+!****ALVEOLAR INTERSTITIUM (AI)****
+INAI1IS=INAIRTOTAL*FAI1(T)
+OUTAI1IS=YAI1IS*(AI1BBO1+PISPTS+PISBL2+PISBND)
+DAI1IS=INAI1IS-OUTAI1IS
+YAI1IS=INTEG(DAI1IS,YAI1ISZ)
+
+INAI1TS=YAI1IS*PISPTS
+OUTAI1TS=YAI1TS*(AI1BBO1+PTSBL2+PTSBND)
+DAI1TS=INAI1TS-OUTAI1TS
+YAI1TS=INTEG(DAI1TS,YAI1TSZ)
+
+INAI1BND=YAI1IS*PISBND+YAI1TS*PTSBND
+OUTAI1BND=YAI1BND*BNDBL2
+DAI1BND=INAI1BND-OUTAI1BND
+YAI1BND=INTEG(DAI1BND,YAI1BNDZ)
+
+INAI2IS=INAIRTOTAL*FAI2(T)
+OUTAI2IS=YAI2IS*(AI2BBO1+PISPTS+PISBL2+PISBND)
+DAI2IS=INAI2IS-OUTAI2IS
+YAI2IS=INTEG(DAI2IS,YAI2ISZ)
+
+INAI2TS=YAI2IS*PISPTS
+OUTAI2TS=YAI2TS*(AI2BBO1+PTSBL2+PTSBND)
+DAI2TS=INAI2TS-OUTAI2TS
+YAI2TS=INTEG(DAI2TS,YAI2TSZ)
+
+INAI2BND=YAI2IS*PISBND+YAI2TS*PTSBND
+OUTAI2BND=YAI2BND*BNDBL2
+DAI2BND=INAI2BND-OUTAI2BND
+YAI2BND=INTEG(DAI2BND,YAI2BNDZ)
+
+INAI3IS=INAIRTOTAL*FAI3(T)
+OUTAI3IS=YAI3IS*(AI3BBO1+AI3THLN+PISPTS+PISBL2+PISBND)
+DAI3IS=INAI3IS-OUTAI3IS
+YAI3IS=INTEG(DAI3IS,YAI3ISZ)
+
+INAI3TS=YAI3IS*PISPTS
+OUTAI3TS=YAI3TS*(AI3BBO1+AI3THLN+PTSBL2+PTSBND)
+DAI3TS=INAI3TS-OUTAI3TS
+YAI3TS=INTEG(DAI3TS,YAI3TSZ)
+
+INAI3BND=YAI3IS*PISBND+YAI3TS*PTSBND
+OUTAI3BND=YAI3BND*BNDBL2
+DAI3BND=INAI3BND-OUTAI3BND
+YAI3BND=INTEG(DAI3BND,YAI3BNDZ)
+
+INTHLNIS=YBB3IS*BB3THLN+YBBO3IS*BBO3THLN+YAI3IS*AI3THLN
+OUTTHLNIS=YTHLNIS*(PISPTS+PISBL2+PISBND)
+DTHLNIS=INTHLNIS-OUTTHLNIS
+YTHLNIS=INTEG(DTHLNIS,YTHLNISZ)
+
+INTHLNTS=YTHLNIS*PISPTS+YBB3TS*BB3THLN+YBBO3TS*BBO3THLN+YAI3TS*AI3THLN
+OUTTHLNTS=YTHLNTS*(PTSBL2+PTSBND)
+DTHLNTS=INTHLNTS-OUTTHLNTS
+YTHLNTS=INTEG(DTHLNTS,YTHLNTSZ)
+
+INTHLNBND=YTHLNIS*PISBND+YTHLNTS*PTSBND
+OUTTHLNBND=YTHLNBND*BNDBL2
+DTHLNBND=INTHLNBND-OUTTHLNBND
+YTHLNBND=INTEG(DTHLNBND,YTHLNBNDZ)
+
+!****REGIONAL Pb MASSES****
+YET2=YET2IS+YET2TS+YET2BND
+YET3=YET3IS+YET3TS+YET3BND
+YETLN=YETLNIS+YETLNTS+YETLNBND
+YET=YET1+YET2+YET3+YETLN
+
+YBB1=YBB1IS+YBB1TS+YBB1BND
+YBB2=YBB2IS+YBB2TS+YBB2BND
+YBB3=YBB3IS+YBB3TS+YBB3BND
+YBB=YBB1+YBB2+YBB3
+
+YBBO1=YBBO1IS+YBBO1TS+YBBO1BND
+YBBO2=YBBO2IS+YBBO2TS+YBBO2BND
+YBBO3=YBBO3IS+YBBO3TS+YBBO3BND
+YBBO=YBBO1+YBBO2+YBBO3
+
+YAI1=YAI1IS+YAI1TS+YAI1BND
+YAI2=YAI2IS+YAI2TS+YAI2BND
+YAI3=YAI3IS+YAI3TS+YAI3BND
+YAI=YAI1+YAI2+YAI3
+
+YTHLN=YTHLNIS+YTHLNTS+YTHLNBND
+YTH=YBB+YBBO+YAI+YTHLN
+
+YLN=YETLN+YTHLN
+
+YRT=YET+YTH
+
+ALUNG=YRT
+
+YBALRT=INAIRTOTAL-YRT-YABSRT-YEXH-YET2GI
+
+!****ABSOPRPTION FROM RESPIRATORY TRACT COMPARTMENTS****
+ABSETIS=PISBL2*(YET2IS+YET3IS+YETLNIS)
+ABSETTS=PTSBL2*(YET2TS+YET3TS+YETLNTS)
+ABSETBND=BNDBL2*(YET2BND+YET3BND+YETLNBND)
+ABSET=ABSETIS+ABSETTS+ABSETBND
+
+ABSBBIS=PISBL2*(YBB1IS+YBB2IS+YBB3IS)
+ABSBBTS=PTSBL2*(YBB1TS+YBB2TS+YBB3TS)
+ABSBBBND=BNDBL2*(YBB1BND+YBB2BND+YBB3BND)
+ABSBB=ABSBBIS+ABSBBTS+ABSBBBND
+
+ABSBBOIS=PISBL2*(YBBO1IS+YBBO2IS+YBBO3IS)
+ABSBBOTS=PTSBL2*(YBBO1TS+YBBO2TS+YBBO3TS)
+ABSBBOBND=BNDBL2*(YBBO1BND+YBBO2BND+YBBO3BND)
+ABSBBO=ABSBBOIS+ABSBBOTS+ABSBBOBND
+
+ABSAIIS=PISBL2*(YAI1IS+YAI2IS+YAI3IS)
+ABSAITS=PTSBL2*(YAI1TS+YAI2TS+YAI3TS)
+ABSAIBND=BNDBL2*(YAI1BND+YAI2BND+YAI3BND)
+ABSAI=ABSAIIS+ABSAITS+ABSAIBND
+
+ABSTHLNIS=PISBL2*YTHLNIS
+ABSTHLNTS=PTSBL2*YTHLNTS
+ABSTHLNBND=BNDBL2*YTHLNBND
+ABSTHLN=ABSTHLNIS+ABSTHLNTS+ABSTHLNBND
+
+ABSTH=ABSBB+ABSBBO+ABSAI+ABSTHLN
+
+ABSRT=ABSET+ABSTH
+YABSRTZ=0.
+YABSRT=INTEG(ABSRT,YABSRTZ)
+
+!****Pb INGESTION FROM ALL SOURCES****
+			!FINDUST (etc) are used to apportion sources in GIT for applying source-specific RBA
+INET2GI=YET2*ET2GI
+INGEST=INDUSTTOTAL+INFOODTOTAL+INWATERTOTAL+INOTHERTOTAL+INET2GI
+!IF (INGEST>0) THEN
+!	FINDUST=INDUSTTOTAL/INGEST
+!	FINFOOD=INFOODTOTAL/INGEST
+!	FINWATER=INWATERTOTAL/INGEST
+!	FINOTHER=INOTHERTOTAL/INGEST
+!	FINET2GI=INET2GI/INGEST
+!ELSE
+!	FINDUST=0
+!	FINFOOD=0
+!	FINWATER=0
+!	FINOTHER=0
+!	FINET2GI=0
+!END IF
+
+!****ABSORPTION FROM GASTROINTESTINAL TRACT****
+
+!CONSTANT C4=30.
+!FRABS=.60-.52/(1.+C4*EXP(-AGE))
+					!GI absorption fraction		
+                      !Fractional absorption of lead from mixed
+FRABS=AF1(AGE)  				 !GI absorption fraction
+                      !sources in the gastrointestinal tract
+
+RAGI=FRABS*(INDUSTTOTAL*RBADUST+INWATERTOTAL*RBAWATER+INFOODTOTAL*RBAFOOD+&
+INOTHERTOTAL*RBAOTHER+INET2GI*RBAET2GI)  
+     								 !Rate of absorption of lead from the gastro-
+                      !intestinal tract (mg/yr)
+A=INTEG(RAGI,0.)      !Cumulative amount of lead absorbed from the
+                      !gastrointestinal tract (mg)
+
+
+!****LEAD IN BLOOD****
+
+!KBIND=KBINDC1-KBINDC2/(1+KBINDC3*EXP(-AGE)) !<<<gd 08/15/14,age-dependent binding in RBC>>>
+KBIND=RSW(AGE.LE.1.,KBINDCZ,KBINDC1-KBINDC2/(1+KBINDC3*EXP(-AGE))) !<<<gd 08/15/14,age-dependent binding in RBC>>>
+BIND=BINDC1+BINDC2/(1+BINDC3*EXP(-AGE)) !<<<gd 08/15/14,age-dependent binding in RBC>>>
+!BIND=RSW(AGE.LE.0.25,1.49,BINDC1+BINDC2/(1+BINDC3*EXP(-AGE))) !<<<gd 08/15/14,age-dependent binding in RBC>>>
+HCT=RSW(AGE.LE.0.01,.52+AGE*14,HCTA*(1.+(0.66-HCTA)*EXP(-(AGE-0.01)*13.9)))
+                      !Hematocrit
+PLASMA=1.-HCT         !Plasma fraction of blood volume
+
+RABL=QL*CBL+QK*CBK+QW*CBW+QP*CBP+CQBC*CCBHC+CQBA*CBDA&
+     +TQBC*TCBHC+TQBA*TCBHA+ABSRT-QCG*CB 
+                      !Rate of change of amount of lead in blood (mg/yr)
+!ABL=INTEG(RABL,0.)    !Amount of lead in blood (mg)
+ABL=INTEG(RABL,ABLZ)    !Amount of lead in blood (mg) <GD 06/19/13>
+CB=ABL/VBL            !Concentration of lead in blood (mg/L)
+PbB=CB*100.           !Concentration of lead in blood (ug/dL)
+
+CPLASMA=((CB-HCT*BIND-G*HCT*KBIND-PLASMA*KBIND)/(2.*(PLASMA+HCT*&
+     G)))+(((((HCT*BIND+G*HCT*KBIND+PLASMA*KBIND-CB)**2.)&
+      +4.*KBIND*CB*(PLASMA+HCT*G))**.5)/(2.*(PLASMA+HCT*G)))
+                      !Concentration of lead in plasma (mg/L)
+PbP=CPLASMA*100.      !Concentration of lead in plasma (ug/dL)
+
+
+!****LEAD EXCRETION****
+!GFR=RSW(WBODY.LE.11.7,708.5*(WBODY**1.3774),4391.9*(WBODY**.636))
+GFR=RSW(WBODY.LE.11.7,800.*(WBODY**1.5),7000.*(WBODY**.636))         !<<GD 2/20/14>>      
+											!Glomerular filtration rate (L plasma/yr)
+CONSTANT C1=1.
+CONSTANT C2=0.9
+CONSTANT C3=50.
+FRX=C1-C2/(1.+C3*EXP(-AGE))
+QEG=FRX*GFR           !Total elimination clearance of lead from
+                      !plasma (L/yr)
+CLK=.7*QEG            !Renal clearance of lead from plasma (L/yr)
+RAKX=CLK*CBPK         !Rate of renal excretion (mg/yr)
+AKX=INTEG(RAKX,0.)    !Amount of lead excreted by the kidney (mg)
+IF (CPLASMA .NE. 0.) PCLEARY=(RAKX)/(CPLASMA)  !Renal plasma clearance (L/yr) <<GD 2/12/14>>
+
+CLL=QEG-CLK           !Hepatic clearance from plasma (in bile) (L/yr)
+RALX=CLL*CBPL         !Rate of hepatic excretion (mg/yr)
+ALX=INTEG(RALX,0.)    !Amount of lead excreted by the liver (mg)
+
+
+RAX=RALX+RAKX         !Total rate of lead excretion by kidney and liver (mg/yr)
+AX=ALX+AKX            !Total amount of lead excreted by kidney and liver(mg)
+
+RFEC=INGEST+INET2GI-RAGI+RALX !Rate of total fecal excretion of lead (mg/yr)
+AFEC=INTEG(RFEC,0.)  !Total amount of lead excreted in feces (mg/yr)
+
+!****LEAD IN LIVER****
+PL=PLZ*(1+EXP(-PLAGE*AGE))   !Function for age-depednence of PL <<GD 02/177/14>>
+RAL=QL*(CB-CBL)+RAGI-RALX
+                      !Rate of change of amount (mg/yr)
+!AL=INTEG(RAL,0.)      !Amount (mg)
+AL=INTEG(RAL,ALZ)      !Amount (mg) <GD 06/19/13>
+CL=AL/VL              !Concentration (mg/L)
+CBPL=AL/(VL*PL)       !Concentration of lead in venous plasma leaving
+                      !liver (mg/L)
+CBL=PLASMA*CBPL+HCT*CBPL*(G+BIND/(KBIND+CBPL))
+                      !Concentration of lead in venous blood leaving
+                      !liver (mg/L)
+
+
+!****LEAD IN KIDNEY****
+PK=PKZ*(1+EXP(-PKAGE*AGE))  !Function for age-depednence of PK <<GD 02/177/14>>
+RAK=QK*(CB-CBK)-RAKX  !Rate of change of amount (mg/yr)
+!AK=INTEG(RAK,0.)      !Amount (mg)
+AK=INTEG(RAK,AKZ)      !Amount (mg) <GD 06/19/13>
+
+CK=AK/VK              !Concentration (mg/L)
+CBPK=AK/(VK*PK)       !Concentration of lead in venous plasma leaving
+                      !kidney (mg/L)
+CBK=PLASMA*CBPK+HCT*CBPK*(G+BIND/(KBIND+CBPK))
+                      !Concentration of lead in venous blood leaving
+                      !kidney (mg/L)
+
+
+!****LEAD IN OTHER WELL PERFUSED TISSUES****
+PW=PWZ*(1+EXP(-PWAGE*AGE))  !Function for age-depednence of PW <<GD 02/177/14>>
+RAW=QW*(CB-CBW)       !Rate of change of amount (mg/yr)
+!AW=INTEG(RAW,0.)      !Amount (mg)
+AW=INTEG(RAW,AWZ)      !Amount (mg) <GD 06/19/13>
+CW=AW/VW              !Concentration (mg/L)
+CBPW=AW/(VW*PW)       !Concentration of lead in venous plasma leaving 
+                      !other well-perfused tissues (mg/L)
+CBW=PLASMA*CBPW+HCT*CBPW*(G+BIND/(KBIND+CBPW))
+                      !Concentration of lead in venous blood leaving
+                      !other well-perfused tissues (mg/L)
+
+
+!****LEAD IN POORLY PERFUSED TISSUES****
+RAP=QP*(CB-CBP)       !Rate of change of amount (mg/yr)
+!AP=INTEG(RAP,0.)      !Amount (mg)
+AP=INTEG(RAP,APZ)      !Amount (mg) <GD 06/19/13>
+CP=AP/VP              !Concentration (mg/L)
+CBPP=AP/(VP*PP)       !Concentration of lead in venous plasma leaving
+                      !poorly-perfused tissues (mg/L)
+CBP=PLASMA*CBPP+HCT*CBPP*(G+BIND/(KBIND+CBPP))
+                      !Concentration of lead in venous blood leaving
+                      !poorly-perfused tissues (mg/L)
+
+
+!****LEAD IN METABOLICALLY ACTIVE REGION OF CORTICAL BONE****
+CRVAFC=LEAD*CBFRC     !Clearance of lead from blood during mineralization
+                      !of newly-apposed cortical bone engaged in active
+                      !modeling during growth (L/yr)
+CRAFBC=CRVAFC*CPLASMA !Rate of deposition of lead in cortical bone engaged
+                      !in active modeling during growth (mg/yr)
+CRARBC=CBRRC*CCMC     !Rate of return of lead to blood with resorption
+                      !of cortical bone engaged in active modeling during
+                      !growth (mg/yr)
+!CAMC=INTEG(CRAFBC-CRARBC-CRFBON*CAMC,0.)
+CAMC=INTEG(CRAFBC-CRARBC-CRFBON*CAMC,CAMCZ)  !<GD 06/19/13>
+                      !Amount of lead incorporated into cortical bone
+                      !engaged in active modeling during growth (mg)
+CCMC=RSW(AGE.LT.AGEA,CAMC/(CVBONEC+1.E-33),0.)
+                      !Concentration of lead in cortical bone engaged in
+                      !active modeling during growth (mg/L)
+CRAMBC=CRARBC-CRAFBC  !Net rate of change of amount of lead in blood
+                      !perfusing cortical bone engaged in active modeling
+                      !during growth (mg/yr)
+CCBHC=RSW(CBFRA.LT.CBFR,CB+CRAMBC/(CQBC+1.E-33),0.)
+                      !Concentration of lead in blood leaving cortical bone
+                      !engaged in active modeling during growth (mg/L)
+
+CRVAFA=LEAD*CBFRA     !Clearance of lead from blood during mineraliza-
+                      !tion of newly-apposed mature cortical bone engaged
+                      !in remodeling (L/yr)
+CRAFBA=CRVAFA*CPLASMA !Rate of deposition of lead in the metabolically
+                      !active region of mature cortical bone engaged in 
+                      !remodeling (mg/yr)
+CRARBA=CBRRA*CCB      !Rate of return of lead to blood with resorption
+                      !of mature cortical bone engaged in remodeling (mg/yr)
+CRAMBA=CRARBA-CRAFBA  !Net rate of change of amount of lead in blood
+                      !perfusing the metabolically active region of mature
+                      !cortical bone engaged in remodeling (mg/yr)
+CCBHA=CB+CRAMBA/(CQBA+1.E-33)
+                      !Concentration of lead in blood leaving the
+                      !metabolically active region of mature cortical bone
+                      !engaged in remodeling (mg/L)
+CCBPHA=((CCBHA-HCT*BIND-G*HCT*KBIND-PLASMA*KBIND)/&
+     (2.*(PLASMA+HCT*G)))+(((((HCT*BIND+G*HCT*KBIND+PLASMA&
+     *KBIND-CCBHA)**2.)+4.*KBIND*CCBHA*(PLASMA+HCT*G))&
+     **.5)/(2.*(PLASMA+HCT*G)))
+                      !Concentration of lead in plasma leaving the
+                      !metabolically active region of mature cortical bone
+                      !engaged in remodeling
+
+
+!***LEAD IN TRABECULAR BONE****
+TRVAFC=LEAD*TBFRC     !Clearance of lead from blood during mineralization
+                      !of newly-apposed trabecular bone engaged in active
+                      !modeling during growth (L/yr)
+TRAFBC=TRVAFC*CPLASMA !Rate of deposition of lead in trabecular bone engaged
+                      !in active modeling during growth (mg/yr)
+TRARBC=TBRRC*TCMC     !Rate of return of lead to plasma with resorption
+                      !of trabecular bone engaged in active modeling during
+                      !growth (mg/yr)
+!TAMC=INTEG(TRAFBC-TRARBC-TRFBON*TAMC,0.)
+TAMC=INTEG(TRAFBC-TRARBC-TRFBON*TAMC,TAMCZ)  !<GD 06/19/13>
+                      !Amount of lead incorporated into trabecular bone
+                      !engaged in active modeling during growth (mg)
+TCMC=RSW(AGE.LT.AGEA,TAMC/(TVBONEC+1.E-33),0.)
+                      !Concentration of lead in trabecular bone engaged in
+                      !active modeling during growth (mg/L)
+TRAMBC=TRARBC-TRAFBC  !Net rate of change of amount of lead in blood
+                      !perfusing trabecular bone engaged in active modeling
+                      !during growth (mg/yr)
+TCBHC=RSW(TBFRA.LT.TBFR,CB+TRAMBC/(TQBC+1.E-33),0.)
+                      !Concentration of lead in blood leaving trabecular bone
+                      !engaged in active modeling during growth (mg/L)
+
+TRVAFA=LEAD*TBFRA     !Clearance of lead from blood during mineraliza-
+                      !tion of newly-apposed mature trabecular bone engaged
+                      !in remodeling (L/yr)
+TRAFBA=TRVAFA*CPLASMA !Rate of deposition of lead in mature trabecular bone          
+                      !engaged in remodeling (mg/yr)
+TRARBA=TBRRA*TCMA     !Rate of return of lead to blood with resorption
+                      !of mature trabecular bone engaged in remodeling (mg/yr)
+TAMA=INTEG(TRAFBA-TRARBA+TRFBON*TAMC,0.)
+                      !Amount of lead incorporated into mature trabecular bone
+                      !engaged in remodeling (mg)
+TCMA=RSW(AGE.LT.AGEA,TAMA/(TVBONEA+1.E-33),TAMA/TVBONE)
+                      !Concentration of lead in mature trabecular bone 
+                      !engaged in remodeling (mg/L)
+TRAMBA=TRARBA-TRAFBA  !Net rate of change of amount of lead in blood
+                      !perfusing mature trabecular bone engaged in 
+                      !remodeling (mg/yr)
+TCBHA=CB+TRAMBA/(TQBA+1.E-33)
+                      !Concentration of lead in blood leaving mature trabecular 
+                      !bone engaged in remodeling (mg/L)
+
+
+!****LEAD IN DIFFUSION REGION OF MATURE CORTICAL BONE****
+VTOTAL=PI*(RAD8**2.)  !Total diffusion region bone volume
+                      !(cm3 per cm canalicule length)
+F1=V1/VTOTAL          !Fraction of diffusion region bone volume
+                      !in the first shell
+F2=V2/VTOTAL          !Fraction of diffusion region bone volume
+                      !in the second shell 
+F3=V3/VTOTAL          !Fraction of diffusion region bone volume
+                      !in the third shell
+F4=V4/VTOTAL          !Fraction of diffusion region bone volume
+                      !in the fourth shell
+F5=V5/VTOTAL          !Fraction of diffusion region bone volume
+                      !in the fifth shell
+F6=V6/VTOTAL          !Fraction of diffusion region bone volume
+                      !in the sixth shell
+F7=V7/VTOTAL          !Fraction of diffusion region bone volume
+                      !in the seventh shell
+F8=V8/VTOTAL          !Fraction of diffusion region bone volume
+                      !in the eighth shell
+
+RDBIN=(S*L*CVBONEA/1000.)*(P*CCBPHA)
+                      !Rate of loss of lead from blood into mature cortical 
+                      !bone by diffusion (mg/yr)
+RDBEX=(S*L*CVBONEA/1000.)*(R*CB1)
+                      !Rate of return of lead to blood from mature cortical
+                      !bone by diffusion (mg/yr)
+RDB=RDBEX-RDBIN       !Net rate of change of amount of lead in blood per-
+                      !fusing the diffusion region of mature cortical bone (mg/yr)
+CBDA=RSW((T.EQ.0.),0.,CCBHA+RDB/(CQBA+1.E-33))
+                      !Concentration of lead in blood leaving the diffusion
+                      !region of mature cortical bone (mg/L)
+CBPDA=((CBDA-HCT*BIND-G*HCT*KBIND-PLASMA*KBIND)/(2.*(PLASMA+HCT*&
+     G)))+(((((HCT*BIND+G*HCT*KBIND+PLASMA*KBIND-CBDA)**2.)&
+      +4.*KBIND*CBDA*(PLASMA+HCT*G))**.5)/(2.*(PLASMA+HCT*G)))
+                      !Concentration of lead in plasma leaving the diffusion
+                      !region of mature cortical bone
+
+RAFB=CRAFBC+CRAFBA+TRAFBC+TRAFBA
+                      !Total rate of deposition of lead with newly-apposed 
+                      !bone (mg/yr)
+RBIN=RDBIN+RAFB       !Total rate of entry of lead into bone,
+                      !formation and diffusion together (mg/yr)
+RARB=CRARBC+CRARBA+TRARBC+TRARBA
+                      !Total rate of return of lead to plasma with resorption
+                      !of bone (mg/yr)
+RBEX=RDBEX+RARB       !Total rate of return of lead from bone,
+                      !resorption and diffusion together (mg/yr)
+RBONE=RBIN-RBEX
+
+PCENT=100.*RBEX/(ABSRT+RAGI+RBEX+1.E-33)
+!Note that these calculations are for cortical bone alone.  It is assumed that
+!trabecular bone lead is in sufficiently rapid equilibrium with plasma lead
+!that it does not represent "historical" bone stores.  This is an assumption 
+!only.
+ 
+RAB1=(S*L*CVBONEA/1000.)*(P*CCBPHA-R*CB1)-(D*CVBONEA*S1*L/1000.)*&
+     (CB1-CB2)+F1*(CRAFBA-CRARBA+CRFBON*CAMC)
+                      !Rate of change of amount of lead in shell 1
+                      !of cortical bone (mg/yr) 
+AB1=INTEG(RAB1,0.)    !Amount of lead in shell 1 of cortical bone (mg)
+CB1=AB1/(1.E-33+CVBONEA*F1)
+                      !Concentration of lead in shell 1 of cortical bone (mg/L)
+
+RAB2=(D*CVBONEA*L/1000.)*(CB1*S1+CB3*S2-CB2*(S1+S2))+F2*(CRAFBA&
+      -CRARBA+CRFBON*CAMC)
+                      !Rate of change of amount of lead in shell 2
+                      !of cortical bone (mg/yr)
+AB2=INTEG(RAB2,0.)    !Amount of lead in shell 2 of cortical bone (mg)
+CB2=AB2/(1.E-33+CVBONEA*F2) 
+                      !Concentration of lead in shell 2 of cortical bone (mg/L)
+
+RAB3=(D*CVBONEA*L/1000.)*(CB2*S2+CB4*S3-CB3*(S2+S3))+F3*(CRAFBA&
+      -CRARBA+CRFBON*CAMC)
+                      !Rate of change of amount of lead in shell 3
+                      !of cortical bone (mg/yr)
+AB3=INTEG(RAB3,0.)    !Amount of lead in shell 3 of cortical bone (mg)
+CB3=AB3/(1.E-33+CVBONEA*F3) 
+                      !Concentration of lead in shell 3 of cortical bone (mg/L)
+
+RAB4=(D*CVBONEA*L/1000.)*(CB3*S3+CB5*S4-CB4*(S3+S4))+F4*(CRAFBA&
+      -CRARBA+CRFBON*CAMC)
+                      !Rate of change of amount of lead in shell 4
+                      !of cortical bone (mg/yr)
+AB4=INTEG(RAB4,0.)    !Amount of lead in shell 4 of cortical bone (mg)
+CB4=AB4/(1.E-33+CVBONEA*F4) 
+                      !Concentration of lead in shell 4 of cortical bone (mg/L)
+
+RAB5=(D*CVBONEA*L/1000.)*(CB4*S4+CB6*S5-CB5*(S4+S5))+F5*(CRAFBA&
+      -CRARBA+CRFBON*CAMC)
+                      !Rate of change of amount of lead in shell 5
+                      !of cortical bone (mg/yr)
+AB5=INTEG(RAB5,0.)    !Amount of lead in shell 5 of cortical bone (mg)
+CB5=AB5/(1.E-33+CVBONEA*F5) 
+                      !Concentration of lead in shell 5 of cortical bone (mg/L)
+
+RAB6=(D*CVBONEA*L/1000.)*(CB5*S5+CB7*S6-CB6*(S5+S6))+F6*(CRAFBA&
+      -CRARBA+CRFBON*CAMC)
+                      !Rate of change of amount of lead in shell 6
+                      !of cortical bone (mg/yr)
+AB6=INTEG(RAB6,0.)    !Amount of lead in shell 6 of cortical bone (mg) 
+CB6=AB6/(1.E-33+CVBONEA*F6) 
+                      !Concentration of lead in shell 6 of cortical bone (mg/L)
+
+RAB7=(D*CVBONEA*L/1000.)*(CB6*S6+CB8*S7-CB7*(S6+S7))+F7*(CRAFBA&
+      -CRARBA+CRFBON*CAMC)
+                      !Rate of change of amount of lead in shell 7
+                      !of cortical bone (mg/yr)
+AB7=INTEG(RAB7,0.)    !Amount of lead in shell 7 of cortical bone (mg) 
+CB7=AB7/(1.E-33+CVBONEA*F7) 
+                      !Concentration of lead in shell 7 of cortical bone (mg/L)
+
+RAB8=(D*CVBONEA*L/1000.)*(CB7*S7-CB8*S7)+F8*(CRAFBA-CRARBA&
+     +CRFBON*CAMC)    !Rate of change of amount of lead in shell 8
+                      !of cortical bone (mg/yr)
+AB8=INTEG(RAB8,0.)    !Amount of lead in shell 8 of cortical bone (mg) 
+CB8=AB8/(1.E-33+CVBONEA*F8) 
+                      !Concentration of lead in shell 8 of cortical bone (mg/L)
+
+CAB=AB1+AB2+AB3+AB4+AB5+AB6+AB7+AB8+CAMC
+                      !Total amount of lead in cortical bone (mg)
+CCB=CAB/CVBONE        !Concentration of lead in cortical bone (mg/L)
+CCMFDB=CAB/(.8*WMFDB) !Concentration of lead in marrow-free dry cortical 
+                      !bone (mg/L)
+
+RTAB=TRAFBA+TRAFBC-TRARBA-TRARBC
+                      !Rate of change of amount of lead in trabecular bone (mg/yr)
+!TAB=INTEG(RTAB,0.)    !Total amount of lead in trabecular bone (mg) <<GD 05/17/14>>
+TAB1=INTEG(RTAB,0.)    !Total amount of lead in trabecular bone (mg)
+TABZ=0.
+IF (TAB1<0) THEN			!Negative value trap for trabecular bone <<GD 05/17/14>>
+   TAB=TABZ
+ELSE
+   TAB=TAB1
+END IF
+
+TCB=TAB/TVBONE        !Concentration of lead in trabecular bone (mg/L)
+TCMFDB=TAB/(.2*WMFDB) !Concentration of lead in marrow-free dry trabecular 
+                      !bone (mg/L)
+
+AB=CAB+TAB            !Total amount of lead in bone (mg) 
+CBONEV=AB/VBONE        !Average concentration of lead in bone (mg/L)
+CSKEL=AB/WSKEL        !Average skeletal lead concentration (ug/g)
+CBONEppm=AB/WBONE     !Average bone lead concentration (ug/g, or ppm)
+CMFDBppm=AB/WMFDB     !Average lead concentration per unit weight
+                      !of marrow-free dry bone (ug/g, or ppm) 
+
+
+!****BALANCES****
+FLOW=QCG-(QL+QK+QW+QP+QB)
+VOLUME=WBODY-(VL+VK+VW+VP+VBL+VBONE)
+BURDEN=AL+AK+AP+AW+ABL+AB+ALUNG  
+SOFT=AL+AK+AP+AW+ABL+ALUNG 
+!MASS=A+ALUNG-(AX+BURDEN)
+MASS=A+YABSRT-(AX+BURDEN)
+
+FRVL=VL/WBODY
+FRVBONE=VBONE/WBODY
+FRRAX=RAX/WBODY
+FRRAGI=RAGI/WBODY
+BAL=RAGI-RAX
+FRBAL=BAL/WBODY
+
+!****OUTPUT VARIABLES**** 
+INTAKE=INTOTAL*1000./365.  !ug/day
+CBLOOD=PbB  !ug/dL
+CPLAS=PbP  !ug/dL
+CKIDNEY=CK/SGST  !ug/g
+CLIVER=CL/SGST  !ug/g
+CWELL=CW/SGST  !ug/mL
+CPOOR=CP/SGST   !ug/g
+CCORT=CCB/DBONE  !ug/g
+CTRAB=TCB/DBONE  !ug/g
+CCORTASH=CCORT/CRTASHF  !ug/g ash !!<<GD 02/21/14>>
+CTRABASH=CTRAB/TRBASHF; !ug/g ash !!<<GD 02/21/14>>
+CBONE=CBONEV/DBONE !ug/g
+ABLOOD=ABL*1000  !ug
+AKIDNEY=AK*1000 !ug
+ALIVER=AL*1000 !ug
+AWELL=AW*1000 !ug
+APOOR=AP*1000 !ug
+AOTHER=AWELL+APOOR !ug
+ACORT=CAB*1000 !ug
+ATRAB=TAB*1000 !ug
+ABONE=AB*1000 !ug
+ART=ALUNG*1000 !ug
+AURINE=AKX*1000 !ug
+AFECAL=AFEC*1000 !ug
+TBODY=BURDEN*1000 !ug
+PCLEAR=PCLEARY/365. !L/day
+CKICORT=CKIDNEY/CCORT !Kidney/cortical bone Pb concentration ratio
+CLICORT=CLIVER/CCORT !Liver/cortical bone Pb concentration ratio
+CWECORT=CWELL/CCORT !Muscle/cortical bone Pb concentration ratio
+
+END                   !EDN OF DERIVATIVE SECTION
+
+
+END                   !END OF DYNAMIC SECTION
+
+
+END									 !END OF PROGRAM

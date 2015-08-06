@@ -1,0 +1,1345 @@
+
+PROGRAM: AALM_LG_v4_1_091514!-----------------------------------------------------------------
+!Created by Gary Diamond, SRC Inc, 09/15/14, as AALM_LG_v4_1_091514.csl
+!*****
+!!This program implements:
+!(1)ICRP lead (Pb)systemic biokinetics model as described in Leggett (1993) and modified to run in ACSL 
+!(2)ICRP Human Respiratory Tract Model modified to run in ACSL
+!(3) body and tissue growth algorithms from the O'Flaherty Model (OF.acsl)
+!*****
+!Code for the systemic model was adapted from R4Chel (Fortran), provided to SRC by Joel Pounds (1998), and migrated to ACSL v11 and subsequently to acslX.
+!Code for OF.acsl was provided to SRC by Ellen O'Flaherty (1998)
+!The immediate precursor csl code for AALM-LG is SRC LRMv8 (2011)
+!*****
+
+!LRMv8 has been revised to meet requirements of EPA Order No. EP-13-H000037 (Evaluation and Application of the EPA All Ages Lead Model)
+!Revisions to LRMv8 are documented in the csl file for version 0 (05/28/13) with a "GD" notation, and include:
+!	Modifications to allow inputs (constants and TABLE parameters) to be read from AALM-LG INPUT&OUTPUT.xls
+!	Modifications to simulate discrete and pulsed exposures to Pb in air, surface dust, water, food and other
+!	Modification of GI-tract simulation to include:
+!		Simulation of distinct inputs of Pb to the stomach compartment from respiratory tract (mucocilary escalator) and ingested dust, water, food and other
+!		Simulation of distinct RBA for Pb from respiratory tract and ingested dust, water, food and other
+!	Simulation of body and tissue growth algorithms from the O'Flaherty Model (OF.acsl)
+!  Simulation of age-dependent Pb concentrations in kidney, liver and bone (KIDCONC, LIVCONC, CORTCONC, TRABCONC)
+!		(simulated as Pb mass divided by tissue mass from O'Flaherty Model)
+!  Selected parameter values have been optimized as described in Final Report: Devleopment and Evaluation of AALM (June 2014)
+!
+!*****
+!Accessory files needed to run AALM-LG include command scripts (*.m) and data input and output files (*.xls):
+!	AALM-LG INPUT&OUTPUT.xls
+!	AALM-LG INTERIM OUTPUT.xls
+!	AALM_LG_IN_v#_DATE.m
+!	AALM_LG_OUT_v#_DATE.m
+!	AALUM_LG_RUN_v#_DATA.m
+!-----------------------------------------------------------------
+!UNITS: All times are days, all Pb units are micrograms; blood, plasma and RBC Pb concentrations are in ug/dL
+
+INITIAL    !START OF INITIAL SECTION
+
+!****TIMING AND INTEGRATION CONTROLS****
+ALGORITHM IALG=2	!Gear integration algorithm for stiff systems 
+!MERROR YPLAS=0.001  !Relative error for Pb in plasma
+NSTEPS NSTP=1000	 !Number of integration steps per communication interval (for fixed intercal integration algorithm
+CINTERVAL CINT=1.	!Communication interval
+CONSTANT TSTART=0.	!Start day for simulation (day)
+CONSTANT TSTOP=32850.	!End day of simulation (age 90 yr)
+
+!****EXPOSURE PULSE CONTROL****
+CONSTANT CAIRPULSE=0.  !Pb concentration in AIR pulse (ug/m3)
+CONSTANT CAIRBASE=0.   !Baseline Pb concentration in AIR (when pulse is off) (ug/m3)
+CONSTANT FAIRPULSE=1. !Fraction of exposure delivered from pulse
+CONSTANT AIRSTART=0.	!Start of pulse (d)
+CONSTANT AIRSTOP=32850.	!End of pulse(d)
+CONSTANT AIRWID1=7.	!Width of pulse 1(d)
+CONSTANT AIRPER1=7.	!Period of pulse 1(d)
+CONSTANT AIRWID2=365.	!Width of pulse 2(d)
+CONSTANT AIRPER2=365.	!Period of pulse 2(d)
+
+CONSTANT CDUSTPULSE=0.  !Pb concentration in DUST pulse (ug/g)
+CONSTANT CDUSTBASE=0.   !Baseline Pb concentration in DUST (when pulse is off) (ug/g)
+CONSTANT FDUSTPULSE=1. !Fraction of exposure delivered from pulse
+CONSTANT DUSTSTART=0.	!Start of pulse (d)
+CONSTANT DUSTSTOP=32850.	!End of pulse (d)
+CONSTANT DUSTWID1=7.	!Width of pulse 1(d)
+CONSTANT DUSTPER1=7.	!Period of  pulse 1(d)
+CONSTANT DUSTWID2=365.	!Width of pulse 2(d)
+CONSTANT DUSTPER2=365.	!Period of pulse 2(d)
+
+CONSTANT CWATERPULSE=0.	!Pb concentration in WATER pulse (ug/L)
+CONSTANT CWATERBASE=0.   !Baseline Pb concentration in WATER (when pulse is off) (ug/L)
+CONSTANT FWATERPULSE=1. !Fraction of exposure delivered from pulse
+CONSTANT WATERSTART=0.	!Start of pulse (d)
+CONSTANT WATERSTOP=32850.	!End of pulse (d)
+CONSTANT WATERWID1=7.	!Width of pulse 1(d)
+CONSTANT WATERPER1=7.	!Period of pulse 1(d)
+CONSTANT WATERWID2=365.	!Width of pulse 2(d)
+CONSTANT WATERPER2=365.	!Period of pulse 2(d)
+
+CONSTANT INFOODPULSE=0.	!Pb intake from FOOD pulse (ug/day)
+CONSTANT INFOODBASE=0.	!Baseline Pb intake from FOOD (when pulse is off) (ug/day)
+CONSTANT FFOODPULSE=1.	!Fraction of exposure delivered from pulse
+CONSTANT FOODSTART=0.	!Start of pulse (d)
+CONSTANT FOODSTOP=32850.	!End of pulse (d)
+CONSTANT FOODWID1=7.	!Width of pulse 1(d)
+CONSTANT FOODPER1=7.	!Period of pulse 1(d)
+CONSTANT FOODWID2=365.	!Width of pulse 2(d)
+CONSTANT FOODPER2=365.	!Period of pulse 2(d)
+
+CONSTANT INOTHERPULSE=0.  !Pb intake from OTHER pulse (ug/day)
+CONSTANT INOTHERBASE=1.	!Baseline Pb intake from OTHER (when pulse is off) (ug/day)
+CONSTANT FOTHERPULSE=1.	!Fraction of exposure delivered from pulse
+CONSTANT OTHERSTART=0.	!Start of pulse (d)
+CONSTANT OTHERSTOP=18250.	!End of pulse (d)
+CONSTANT OTHERWID1=7.	!Width of pulse 1(d)
+CONSTANT OTHERPER1=7.	!Period of pulse 1(d)
+CONSTANT OTHERWID2=365.	!Width of pulse 2(d)
+CONSTANT OTHERPER2=365.	!Period of pulse 2(d)
+
+!****GROWTH PARAMETER CONSTANTS****
+CONSTANT DAY0=0.			!Day of birth
+CONSTANT WBIRTH=3.5 	!Weight at birth (kg)
+CONSTANT WCHILD=22  	!Maximum weight for early hyperbolic section
+                      	!of growth curve (kg)
+CONSTANT HALF=3       	!Age at which weight is half WCHILD (yr)
+CONSTANT WADULT=34    	!Maximum weight for later logistic section
+                      	!of growth curve (kg)
+CONSTANT KAPPA=600    	!Logistic constant kappa
+CONSTANT LAMBDA=0.017   !Logistic constant lambda (1/(kg-yr))
+CONSTANT LB=0.85		!Ratio of lean body mass to body mass
+
+WBODY0=WBIRTH+WCHILD*(DAY0/365)/(HALF+(DAY0/365))+WADULT/(1.+KAPPA*EXP&
+     (-LAMBDA*WADULT*(DAY0/365)))  !Body weight at birth (kg)
+
+!****ADULT TISSUE MASSES (g)****
+CONSTANT KWT=310.		 !Kidney (g)
+CONSTANT CRTWT=4000.	!Cortical bone (g)
+CONSTANT TRBWT=3000.	!Trabecular bone (g)
+CONSTANT ASHWT=2800.	!Bone ash (g)
+CONSTANT CRTASH=2200. !Cortical bone ash (g) <<GD 02/21/14>>
+CONSTANT TRBASH=1500. !Trabecular bone ash (g) <<GD 02/21/14>>
+CONSTANT CRTASHF=0.55 !Cortical bone ash (fraction of weight) <<GD 02/21/14>>
+CONSTANT TRBASHF=0.50 !Trabecular bone ash (fraction of weight) <<GD 02/21/14>>
+
+!****TISSUE VOLUME PARAMETER CONSTANTS****
+CONSTANT VBLC=0.067    !Total blood volume (L/kg BW)
+CONSTANT VLC=0.025     !Liver volume in the adult (L/kg BW)
+CONSTANT VKC=0.0045    !Kidney volume in the adult (L/kg BW)
+CONSTANT VLUC=0.015    !Lung volume in the adult (L/kg BW)
+
+!****GASTROINTESTINAL TRACT (GIT) ABSORPTION PARAMTETER CONSTANTS****
+CONSTANT RBAAIR=1.    !RBA for AIR Pb deposited in RT and transferred to GIT (f)
+CONSTANT RBADUST=1.   !RBA for ingested DUST Pb (f)
+CONSTANT RBAWATER=1.  !RBA for ingested WATER Pb (f)
+CONSTANT RBAFOOD=1.   !RBA for ingested FOOD Pb (f)
+CONSTANT RBAOTHER=1.  !RBA for ingested OTHER Pb (f)
+CONSTANT RBAET2GI=1.  !RBA for ingested inhaled Pb (f)
+
+!****REPSIRATORY TRACT (RT) BIOKINETICS PARAMETER CONSTANTS****
+!****TRANSFER COEFICIENTS FOR RESPORATORY TRACT CLEARANCE****
+CONSTANT ET1EXH=1.0       !Extrathoracic to exhaled (day-1)
+CONSTANT ET2GI=100.0      !Extrathoracic to GIT (day-1)
+CONSTANT ET3ETLN=0.001    !Extrathoracic to lymph node (day-1)
+CONSTANT BB1ET2=10.0 	   !Bronchi to extrathoracic (day-1)
+CONSTANT BB2ET2=0.03      !Bronchi to extrathoracic (day-1)
+CONSTANT BB3THLN=0.01     !Bronchi to lymph node (day-1)
+CONSTANT BBO1BB1=2.0      !Bronchiolar to bronchi (day-1)
+CONSTANT BBO2BB1=0.03     !Bronchiolar to bronchi (day-1)
+CONSTANT BBO3THLN=0.01    !Bronchiolar to lymph node (day-1)
+CONSTANT AI1BBO1=0.02     !Alveolar interstitium to bronchiolar (day-1)
+CONSTANT AI2BBO1=0.001    !Alveolar interstitium to bronchiolar (day-1)
+CONSTANT AI3BBO1=0.0001   !Alveolar interstitium to bronchiolar (day-1)
+CONSTANT AI3THLN=0.00002  !Alveolar interstitium to lymph node (day-1)
+
+!****RT ABSORPTION BEHAVIOR TYPE S (SLOW)****
+CONSTANT PISPTS=100.0  !Particle initial state to transformed state (day-1)
+CONSTANT PISBL=0.1     !Particle initial state to blood (day-1)
+CONSTANT PTSBL=0.0001  !Particle transformed state to blood (day-1)
+CONSTANT FBND=0.			 !Fraction bound (f)
+CONSTANT BNDBL=0.1		 !Bound to blood (day-1)	
+
+!****FRACTION BOUND****
+IF(FBND.EQ.0.) THEN
+BNDBL2=0.
+ELSE
+BNDBL2=BNDBL
+ENDIF 
+
+PISBL2=PISBL*(1.-FBND)
+PTSBL2=PTSBL*(1.-FBND)
+PISBND=PISBL*FBND
+PTSBND=PTSBL*FBND
+
+!****SYSEMIC BIOKINETICS PARAMETER CONSTANTS****
+CONSTANT RBCNLIN=1	   !Non-linear RBC switch (1=non-linear)
+CONSTANT RBCNL=60.	   !Non-linear threshold concentration (ug/dL RBC)
+CONSTANT SATRAT=350.	 !Saturating (maximum) RBC concentration (ug/dL RBC)
+CONSTANT POWER=1.5	   !Exponent of the algorithm for the deposition fraction (D)
+CONSTANT IFETAL=1 	   !IFETAL=1 for setting states at birth based on fetal exposure maternal blood Pb
+CONSTANT BLDMOT=2.35   !Maternal blood Pb concentration
+CONSTANT BRATIO=0.85   !Fetal:maternal blood Pb concentration ratio	
+
+CONSTANT SOFIN=0.50	  !Fraction of body Pb at birth in soft tissue
+CONSTANT RBCIN=0.07	  !Fraction of body Pb at birth in RBCs
+CONSTANT BONIN=0.32  	!Fraction of body Pb at birth in bone
+CONSTANT RENIN=0.01	  !Fraction of body Pb at birth in kidney	
+CONSTANT HEPIN=0.055	 !Fraction of body Pb at birth in liver
+CONSTANT BRANIN=0.045	!Fraction of body Pb at birth in brain
+
+CONSTANT RSTMC=24.	 !Adult transfer rate from stomach to small intestine(d-1)
+CONSTANT RSIC=6.	   !Adult transfer rate from small intestine to upper large intestine (d-1)
+CONSTANT RULI=1.85 	!Adult transfer rate from upper large intestine to lower large intestine(d-1)
+CONSTANT RLLI=1.0	  !Adult transfer rate from lower large intestine to feces(d-1)	
+
+CONSTANT RLVR1=0.0693	
+						!Transfer rate (d-1) out of the LIVER1 (fast) compartment; this includes transfer to the small intestine or 
+						!plasma (absorption). The rates of transfer to the small intestine
+						!and plasma are the same, therefore, unique variables for each are not specified.
+
+CONSTANT RKDN1=0.139  !Transfer rate (d-1)from kidney to the urinary pathway 
+
+CONSTANT RSOF0=2.079
+CONSTANT RSOF1=0.00693
+CONSTANT RSOF2=0.00038
+					!Age-specific transfer rates (d-1) from 3 soft tissue compartments to plasma;
+					!the rate from SOF1 is the sum of transfer to plasma (DF=0.6 of SOF1 burden, R=0.00416 d1)
+					!excreta other than urine, feces and sweat, also specified as S2HAIR(DF=0.4 of SOF1 burden, R=0.00277 d-1)
+
+CONSTANT TOURIN=0.015
+					!Deposition fraction (DF) from plasma to urine; the fraction of total Pb transferred out of plasma that 
+					!goes to directly to urine; this does not include the kidney-bladder-urine pathway.  
+					!The transfer rate (d-1) is given by TOURINE x RPLAS (2000 d-1)
+
+CONSTANT TOFECE=0.006
+					!Deposition fraction from plasma directly to the small intestine; this does not include the transfer from 
+					!biliary secretion which is specified by RLVR1
+
+CONSTANT TOSWET=0.0035
+					!Deposition fraction from plasma directly to sweat
+CONSTANT S2HAIR=0.4
+					!Deposition fraction from soft tissue compartment 1 (SOF1) to excreta other than urine, feces and sweat
+
+CONSTANT TOLVR1=0.04
+					!Deposition fraction (DF)plasma--LIVER1(R=TOLVR1*RPLAS)
+
+CONSTANT H1TOH2=0.1
+					!Fraction of transfer out of LIVER1(fast)that goes to LIVER2 (slow)
+
+CONSTANT H1TOSI=0.45
+					!Fraction of transfer out of LIVER1 that goes to the small intestine
+
+CONSTANT H1TOBL=0.45 
+					!Fraction of transfer out of LIVER1 that goes to plasma Since 45% goes to the small intestine
+					!and 45% goes to plasma (R is specified as RLVR1), R for LIVRE1-to-LIVER2 = 0.1 RLVR1)
+
+CONSTANT TOKDN1=0.02
+					!Deposition fraction (DF) from plasma to KINDEY1 (urinary path)
+				
+CONSTANT TOKDN2=0.0002
+					!Deposition fraction (DF) Plasma to KINDEY2 (in kidney tissue not destined for urine)
+
+CONSTANT TORBC=0.24
+    			!Deposition fraction (DF) plasma-to-RBC (0.24)
+
+CONSTANT TEVF=0.5000
+					!Deposition fraction (DF) from plasma to plasma extravascular pool; 
+					!this pool transiently receives 50% of RPLAS and returns this to 
+					!plasma (TOECF = TECF); EVF contains 3 times the amount of Pb as 
+					!plasma, therefore, R plasma-to-EVF = 1000, R EVF-to-plasma = 333
+
+CONSTANT SIZEVF=3.
+					!Volume of the EVF compartment compared to plasma
+
+CONSTANT RPLAS=2000.
+					!Total transfer rate from diffusible plasma (d-1)
+
+CONSTANT TOPROT=0.0004
+					!Deposition fraction in the bound pool of plasma
+
+CONSTANT RPROT=0.139
+					!Transfer rate from bound plasma to diffusible plasma (d-1)
+
+!CONSTANT RBCVOL=22. 	!Adult RBC Volume (dL)
+
+!CONSTANT PLSVOL=30. 	!Adult plasma volume (dL)  <<GD 08/27/13>>
+
+CONSTANT HCTA=0.46    !Adult hematocrit <<GD 08/27/13>>
+
+CONSTANT TBONEL=0.08	
+					!End value of TBONE array.  This values is used in calculating AGESCL, and must be adjusted to the 
+					!end value of the TBONE array, if the breakpoints are changed
+
+RDECAY=0.	!Radiological decay rate constant (d-1)
+
+!****INITIIAL VALUES OF TISSUE Pb MASSES****
+					!The following commands set Pb levels (ug) in various tissues 
+					!(soft tissue 2, RBC, non-exchangeable pool of cortical and 
+					!trabecular bone, kidney, liver, brain) in proportion to maternal 
+					!blood Pb and fetal:maternal ratio (BRATIO), If IFETAL=1
+
+IF (IFETAL .EQ. 1) THEN
+      	YSOF20=SOFIN*(BLDMOT*BRATIO*3./RBCIN)
+      	YRBC0=RBCIN*(BLDMOT*BRATIO*3./RBCIN)
+      	YCVOL0=0.8*BONIN*(BLDMOT*BRATIO*3./RBCIN)
+      	YTVOL0=0.2*BONIN*(BLDMOT*BRATIO*3./RBCIN)
+      	YKDN20=RENIN*(BLDMOT*BRATIO*3./RBCIN)
+      	YLVR20=HEPIN*(BLDMOT*BRATIO*3./RBCIN)
+      	YBRAN0=BRANIN*(BLDMOT*BRATIO*3./RBCIN)
+ELSE
+      	YSOF20=0. 	!The following commands set tissue Pb masses if IFETAL=0
+      	YRBC0=0.
+      	YCVOL0=0.
+      	YTVOL0=0.
+      	YKDN20=0.
+      	YLVR20=0.
+				YBRAN0=0.
+ENDIF
+
+!***INITIAL Pb MASSES IN RESPIRATORY TRACT TISSUES****
+YET1Z=0.
+YET2ISZ=0.
+YET2TSZ=0.
+YET2BNDZ=0.
+YEXHZ=0.
+YET3ISZ=0.
+YET3TSZ=0.
+YET3BNDZ=0.
+YETLNISZ=0.
+YETLNTSZ=0.
+YETLNBNDZ=0.
+YBB1ISZ=0.
+YBB1TSZ=0.
+YBB1BNDZ=0.
+YBB2ISZ=0.
+YBB2TSZ=0.
+YBB2BNDZ=0.
+YBB3ISZ=0.
+YBB3TSZ=0.
+YBB3BNDZ=0.
+YBBO1ISZ=0.
+YBBO1TSZ=0.
+YBBO1BNDZ=0.
+YBBO2ISZ=0.
+YBBO2TSZ=0.
+YBBO2BNDZ=0.
+YBBO3ISZ=0.
+YBBO3TSZ=0.
+YBBO3BNDZ=0.
+YTHLNISZ=0.
+YTHLNTSZ=0.
+YTHLNBNDZ=0.
+YAI1ISZ=0.
+YAI1TSZ=0.
+YAI1BNDZ=0.
+YAI2ISZ=0.
+YAI2TSZ=0.
+YAI2BNDZ=0.
+YAI3ISZ=0.
+YAI3TSZ=0.
+YAI3BNDZ=0.
+
+!****INITITAL Pb MASSES OF OTHER TISSUES****
+YR10=0.		
+YR20=0.
+YR30=0.
+YR40=0.
+YSTMC0=0.
+YSIC0=0.
+YPLS0=0.
+YPLAS0=0.
+YPROT0=0.
+YBLUD0=0.
+YEVF0=0.
+YSOF00=0.
+YSOF10=0.
+YCSUR0=0.
+YCDIF0=0.
+YTSUR0=0.
+YTDIF0=0.
+YLVR10=0.
+YKDN10=0.
+YBLAD0=0.
+YULIC0=0.
+YLLIC0=0.
+YURIN0=0.
+YFECE0=0.
+YSWET0=0.
+YHAIR0=0.
+
+
+END	!END OF INIITAL SECTION
+
+DYNAMIC   !START OF DYNAMIC SECTION
+
+DERIVATIVE  !START OF DERIVATIVE SECTION
+
+!****TIME AND AGE VARIABLES****
+DAY=DAY0+T		!Current day of simulation
+YEAR=DAY/365.
+
+!****AGE-DEPENDENT EXPOSURE AND INTAKE VARIABLE ARRAYS****GD 4/16/13
+TABLE CAIR,1,50/50*0.0,50*0.0/      !Age array of AIR Pb concentrations (ug/m3)
+TABLE VENT,1,50/50*1.0,50*1.0/      !Age array of ventilation rates (m3/day)
+TABLE CDUST,1,50/50*1.0,50*1.0/     !Age array of DUST Pb concentrations (ug/g)
+TABLE IRDUST,1,50/50*1.0,50*1.0/    !Age array of DUST intake rates (g/day)
+TABLE CWATER,1,50/50*1.0,50*1.0/    !Age array of WATER Pb concentrations (ug/L)
+TABLE IRWATER,1,50/50*1.0,50*1.0/   !Age array of WATER intake rates (L/day)
+TABLE INFOOD,1,50/50*1.0,50*1.0/    !Age array of FOOD Pb intakes (ug/day)
+TABLE INOTHER,1,50/50*1.0,50*1.0/   !Age array of OTHER Pb intakes (ug/day)
+
+!****AGE-DEPENDENT RESPIRATORY TRACT (RT) DEPOSITION FRACTIONS****
+TABLE FET1,1,9/9*1.0,9*1.0/
+TABLE FET2,1,9/9*1.0,9*1.0/
+TABLE FET3,1,9/9*1.0,9*1.0/
+TABLE FBB1,1,9/9*1.0,9*1.0/		 
+TABLE FBB2,1,9/9*1.0,9*1.0/		 
+TABLE FBB3,1,9/9*1.0,9*1.0/
+TABLE FBBO1,1,9/9*1.0,9*1.0/
+TABLE FBBO2,1,9/9*1.0,9*1.0/
+TABLE FBBO3,1,9/9*1.0,9*1.0/
+TABLE FAI1,1,9/9*1.0,9*1.0/
+TABLE FAI2,1,9/9*1.0,9*1.0/
+TABLE FAI3,1,9/9*1.0,9*1.0/
+	
+FRT=FET1(T)+FET2(T)+FET3(T)+FBB1(T)+FBB2(T)+FBB3(T)+FBBO1(T)+FBBO2(T)+FBBO3(T)+FAI1(T)+FAI2(T)+FAI3(T)
+
+!****AGE-DEPENDENT SYSTEMIC BIOKINETICS PARAMETERS****  GD 4/16/13
+TABLE AF1,1,20/20*1.0,20*1.0/ 	 
+					!GI absorption fraction
+AFT=AF1(T)	!Allows output of time series from table array
+TABLE GSCAL,1,11/11*1.0,11*1.0/  
+					!Age scaling factors for GI-tract transfer rates at 10 ages(adult=1) 
+GSCALT=GSCAL(T)	!Allows output of time series from table array
+TABLE RCORT,1,11/11*1.0,11*1.0/   
+					!Cortical bone turnover rates (d-1), equivalent to rate of transfer from the "non-exchangeable" pool of cortical bone to plasma 
+RCORTT=RCORT(T)	!Allows output of time series from table array
+TABLE RTRAB,1,11/11*1.0,11*1.0/
+					!Trabecular bone turnover rates (d-1), equivalent to rate of transfer from the "non-exchangeable" pool of trabecular bone to plasma  
+RTRABT=RTRAB(T)	!Allows output of time series from table array
+TABLE RCS2B,1,11/11*1.0,11*1.0/    
+					!Transfer rates (d-1) from cortical bone surface to plasma
+RCS2BT=RCS2B(T)	!Allows output of time series from table array
+TABLE RTS2B,1,11/11*1.0,11*1.0/ 
+					!Transfer rates (d-1)from trabecular bone surface to plasma
+RTS2BT=RTS2B(T)	!Allows output of time series from table array
+TABLE RCS2DF,1,11/11*1.0,11*1.0/
+					!Transfer rates(d-1) from cortical bone surface to exchangeable pool of cortical bone
+RCS2DFT=RCS2DF(T)	!Allows output of time series from table array
+TABLE RTS2DF,1,11/11*1.0,11*1.0/ 
+					!Transfer rates(d-1) from trabecular bone surface to exchangeable pool of trabecular bone
+RTS2DFT=RTS2DF(T)	!Allows output of time series from table array
+TABLE RDIFF,1,11/11*1.0,11*1.0/  
+					!Transfer rates (d-1) from the exchangeable pool of bone, this includes transfer to surface bone and the 
+					!"non-exchangeable" pool.  The rates for cortical and trabecular bone are the same, therefore, 
+					!unique variables for each are not specified.
+RDIFFT=RDIFF(T)	!Allows output of time series from table array
+TABLE FLONG,1,11/11*0.,11*0./   
+					!Fraction of total transfer from the exchangeable bone pool to the non-exchangeable pool.  Rates for
+					!cortical and trabecular bone are the same, therefore, unique variables for each are not specified.
+FLONGT=FLONG(T)	!Allows output of time series from table array
+TABLE RBLAD,1,11/11*1.0,11*1.0/   
+					!Transfer rates (d-1) from the urinary bladder to urine
+RBLADT=RBLAD(T)	!Allows output of time series from table array
+TABLE RLVR2,1,11/11*1.0,11*1.0/   
+					!Transfer rates (d-1) from the LIVER2 (slow) compartment to plasma
+RLVR2T=RLVR2(T)!Allows output of time series from table array
+TABLE RKDN2,1,11/11*1.0,11*1.0/  
+					!Transfer rates (d-1) from kidney (Other compartment) to plasma
+RKDN2T=RKDN2(T)	!Allows output of time series from table array
+TABLE RBRAN,1,11/11*1.0,11*1.0/ 
+					!Transfer rates (d-1) from brain to plasma   
+RBRANT=RBRAN(T)	!Allows output of time series from table array
+TABLE TBONE,1,11/11*1.0,11*1.0/  
+					!Deposition fraction (DF) of plasma Pb to surface bone (R=ARBONE*TFRAC*RPLAS); the fraction deposited on 
+					!trabecular surface bone is given by TFRAC(0.8) and on cortical surface bone is given by 1-TFRAC (=0.2)  
+TBONET=TBONE(T)	!Allows output of time series from table array
+TABLE TFRAC,1,11/11*1.0,11*1.0/   
+					!Fraction of plasma-to-bone deposition that goes to trabecular surface bone; 1-TFRAC is the fraction that 
+					!goes to cortical surface bone
+TFRACT=TFRAC(T)	!Allows output of time series from table array
+TABLE TOSOF0,1,11/11*1.0,11*1.0/  
+					!Deposition fraction (DF) plasma to soft tissue (0, fast compartment)
+TOSOF0T=TOSOF0(T)	!Allows output of time series from table array
+TABLE TOSOF1,1,11/11*1.0,11*1.0/  
+					!Deposition fraction (DF) plasma to soft tissue (1),intermediate turnover compartment,
+					!also the compartment from which excretion to hair and other routes other than urine, feces and sweat occur
+TOSOF1T=TOSOF1(T)	!Allows output of time series from table array
+TABLE TOSOF2,1,11/11*1.0,11*1.0/ 
+					!Deposition fraction (DF) plasma to soft tissue (2,slow turnover compartment)
+TOSOF2T=TOSOF2(T)	!Allows output of time series from table array
+TABLE TOBRAN,1,11/11*1.0,11*1.0/
+					!Deposition fraction (DF) plasma to brain
+TOBRANT=TOBRAN(T)	!Allows output of time series from table array
+TABLE RRBC,1,11/11*1.0,11*1.0/
+					!Transfer rate RBC-to-Plasma
+RRBCT=RRBC(T)	!Allows output of time series from table array
+TABLE AMTBLD,1,11/11*1.0,11*1.0/
+					!Blood volume (dL)
+AMTBLDT=AMTBLD(T) !Allows output of time series from table array
+
+!****EXPOSURE-INTAKE SIMULATIONS****GD 04/16/13
+AIRPULSE=PULSE(AIRSTART,AIRPER1,AIRWID1)*PULSE(AIRSTART,AIRPER2,AIRWID2)
+DUSTPULSE=PULSE(DUSTSTART,DUSTPER1,DUSTWID1)*PULSE(DUSTSTART,DUSTPER2,DUSTWID2)
+WATERPULSE=PULSE(WATERSTART,WATERPER1,WATERWID1)*PULSE(WATERSTART,WATERPER2,WATERWID2)
+FOODPULSE=PULSE(FOODSTART,FOODPER1,FOODWID1)*PULSE(FOODSTART,FOODPER2,FOODWID2)
+OTHERPULSE=PULSE(OTHERSTART,OTHERPER1,OTHERWID1)*PULSE(OTHERSTART,OTHERPER2,OTHERWID2)
+
+!<<<GD 03/04/14>>>
+!INAIRTOTAL=VENT(T)*(((CAIRBASE+CAIRPULSE*AIRPULSE)*FAIRPULSE)+(CAIR(T)*(1.-FAIRPULSE)))
+!INDUSTTOTAL=IRDUST(T)*(((CDUSTBASE+CDUSTPULSE*DUSTPULSE)*FDUSTPULSE)+(CDUST(T)*(1.-FDUSTPULSE)))
+!INWATERTOTAL=IRWATER(T)*(((CWATERBASE+CWATERPULSE*WATERPULSE)*FWATERPULSE)+(CWATER(T)*(1.-FWATERPULSE)))
+!INFOODTOTAL=((INFOODBASE+INFOODPULSE*FOODPULSE)*FFOODPULSE)+(INFOOD(T)*(1.-FFOODPULSE))
+!INOTHERTOTAL=((INOTHERBASE+INOTHERPULSE*OTHERPULSE)*FOTHERPULSE)+(INOTHER(T)*(1.-FOTHERPULSE))
+!INTOTAL=INAIRTOTAL+INDUSTTOTAL+INWATERTOTAL+INFOODTOTAL+INOTHERTOTAL  !<<GD 8/19/13>>
+
+IF (T>AIRSTOP) THEN
+	INAIRTOTAL= VENT(T)*(CAIRBASE*FAIRPULSE+CAIR(T)*(1-FAIRPULSE))
+ELSE
+	INAIRTOTAL=VENT(T)*((CAIRBASE+CAIRPULSE*AIRPULSE)*FAIRPULSE+CAIR(T)*(1-FAIRPULSE))
+END IF
+
+IF (T>DUSTSTOP) THEN
+	INDUSTTOTAL= IRDUST(T)*(CDUSTBASE*FDUSTPULSE+CDUST(T)*(1-FDUSTPULSE))
+ELSE
+	INDUSTTOTAL=IRDUST(T)*((CDUSTBASE+CDUSTPULSE*DUSTPULSE)*FDUSTPULSE+CDUST(T)*(1-FDUSTPULSE))
+END IF
+
+IF (T>WATERSTOP) THEN
+	INWATERTOTAL= IRWATER(T)*(CWATERBASE*FWATERPULSE+CWATER(T)*(1-FWATERPULSE))
+ELSE
+	INWATERTOTAL=IRWATER(T)*((CWATERBASE+CWATERPULSE*WATERPULSE)*FWATERPULSE+CWATER(T)*(1-FWATERPULSE))
+END IF
+
+IF (T>FOODSTOP) THEN
+	INFOODTOTAL=INFOODBASE*FFOODPULSE+INFOOD(T)*(1-FFOODPULSE)
+ELSE
+	INFOODTOTAL=(INFOODBASE+INFOODPULSE*FOODPULSE)*FFOODPULSE+INFOOD(T)*(1-FFOODPULSE)
+END IF
+
+IF (T>OTHERSTOP) THEN
+	INOTHERTOTAL=INOTHERBASE*FOTHERPULSE+INOTHER(T)*(1-FOTHERPULSE)
+ELSE
+	INOTHERTOTAL=(INOTHERBASE+INOTHERPULSE*OTHERPULSE)*FOTHERPULSE+INOTHER(T)*(1-FOTHERPULSE)
+END IF
+
+INTOTAL=INAIRTOTAL+INDUSTTOTAL+INWATERTOTAL+INFOODTOTAL+INOTHERTOTAL  !<<GD 8/19/13>>
+
+!****GROWTH SIMULATION****!
+				!Simulates body and tissue growth based on O'Flaherty 1993
+				!Weights for kidney and liver are calculated in AALM.acsl assuming specific gravity=1.05 (ICRP, 1981; ILSI, 1994)
+				!Weights of bone, kidney and liver are used to calculate age-specific tissue concentrations as Pb mass/tissue weight
+
+WBODY=WBIRTH+WCHILD*(day/365)/(HALF+(day/365))+WADULT/(1.+KAPPA*EXP&
+     (-LAMBDA*WADULT*(day/365)))     !Body weight as a function of age (kg)
+LBM=WBODY*LB !Lean body mass (kg)
+UCR=((LBM/0.0272)-8.58)/1000 !Urinary creatinine (g/day)
+!VBL=1000*VBLC*WBODY        !Total blood volume (ml)
+VBL=VBLC*WBODY        !Total blood volume (L) <<GD 08/15/13>>
+VPL=VBL*(1-HCT)			 !Total plasm volume (L) <<GD 08/27/13>>
+VRBC= VBL*HCT				 !Total RBA volume (L) <<GD 08/27/13>>
+VL=1000*(VLC*(WBIRTH+WADULT+WCHILD)*((WBODY/(WBIRTH+WADULT&
+     +WCHILD))**.85))  !Liver volume (ml)
+VK=1000*(VKC*(WBIRTH+WADULT+WCHILD)*((WBODY/(WBIRTH+WADULT&
+     +WCHILD))**.84))  !Kidney volume (ml)
+VP=1000*(VLUC*(WBIRTH+WADULT+WCHILD)*((WBODY/(WBIRTH+WADULT&
+     +WCHILD))**.84))  !Lung tissue volume (ml)
+WSKEL=1000*0.058*WBODY**1.21		  !Skeleton weight(g)
+WBONE=1000*0.0290*WBODY**1.21		 !Bone weight (g)
+VBONE=1000*0.0168*WBODY**1.188		!Bone volume (ml)
+CVBONE=0.8*VBONE		       !Cortical bone volume (ml)
+TVBONE=VBONE-CVBONE		    !Trabecular bone volume (ml)
+DBONE=WBONE/VBONE	      	!Bone density (g/ml)
+WCRT=WBONE*CVBONE/VBONE    !Cortical bone weight (g)
+WTRB=WBONE*TVBONE/VBONE    !Trabecular bone weight (g)
+WKID=VK*1.05							 !Kidney weight (g)
+WLIV=VL*1.05							 !Liver weight (g)  ***GD 04/10/13
+HCT=RSW((day/365.).LE.0.01,.52+(day/365.)*14,HCTA*(1.+(0.66-HCTA)*EXP(-((day/365.)-0.01)*13.9)))  !Hematocrit <<GD 08/27/13>>
+	
+!****SCALING OG BONE Pb TRANSFER RATES AND DEPOSITION FRACTIONS****
+			!These rates were not previously scaled in Table arrays
+RDF2CS=(1.-FLONG(T))*RDIFF(T)
+		!Transfer rate (d-1) from exchangeable pool of cortical bone to cortical bone surface
+RDF2TS=(1.-FLONG(T))*RDIFF(T)
+		!Transfer rate (d-1) from exchangeable pool of trabecular bone to trabecular bone surface
+RDF2DC=FLONG(T)*RDIFF(T)
+		!Transfer rate (d-1) from exchangeable pool of cortical bone to non-exchangeable pool
+RDF2DT=FLONG(T)*RDIFF(T)
+		!Transfer rate (d-1) from exchangeable pool of trabecular bone to non-exchangeable pool
+
+AGESCL=(1.0-TEVF-TBONE(T))/(1.0-TEVF-TBONEL)
+				!Calculates scaling factor for deposition fractions based on
+				!deposition fractions for EVF and age-interpolated value 
+				!for bone surface (for mass balance).  
+				!AGESCL restrains the deposition fractions (and total outflow) 
+				!from diffusible plasma to soft tissues to the fraction not deposited
+				!to extravascular fluid or bone, while TBONE varies with age.
+				!AGESCL cannot be negative (e.g., If TEVF=0.5, TBONE must be <0.5)! 
+TURIN=AGESCL*TOURIN
+TFECE=AGESCL*TOFECE
+TSWET=AGESCL*TOSWET
+TSOF0=AGESCL*TOSOF0(T)
+TSOF1=AGESCL*TOSOF1(T)
+TSOF2=AGESCL*TOSOF2(T)
+TBRAN=AGESCL*TOBRAN(T)
+TLVR1=AGESCL*TOLVR1
+TKDN1=AGESCL*TOKDN1
+TKDN2=AGESCL*TOKDN2
+TRBC=AGESCL*TORBC
+TPROT=AGESCL*TOPROT
+
+!****CONCENTRATIONS OF Pb IN BLOOD AND PLASMA (ug/dL)****
+!DECRBC=YRBC/RBCVOL  <<GD 08/27/13>>
+!DECPLS=YPLAS/PLSVOL  <<GD 08/27/13>>
+!BLDVOL=RBCVOL+PLSVOL  <<GD 08/27/13>>
+!DECLTR=YBLUD/BLDVOL   <<GD 08/27/13>>
+
+!****RBC Pb SATURATION****	
+			!TORBC is the age-scaled deposition fraction from Table array 
+			!TOORBC is TRBC adjusted for RBC saturation; this adjustment occurs 
+			!if the RBC Pb concentration (RBCONC) is greater than the non-linear
+ 		 !threshold (RBCNL), as follows:
+
+IF (RBCNLIN .EQ.1) THEN
+	IF (RBCONC .LE. RBCNL) THEN
+		TOORBC=TRBC
+	ELSE 
+    TOORBC=TRBC*(1.-((RBCONC-RBCNL)/(SATRAT-RBCNL)))**POWER
+	ENDIF
+ELSE 
+	TOORBC=TRBC
+ENDIF
+	
+
+!****TOTAL DEPOSITION FRACTIONS AND TRASNFER RATES FROM PLAMSA****
+TSUM=TOORBC+TEVF+TPROT+TBONE(T)+TURIN+TFECE+TSWET+TLVR1&
+     	+TKDN1+TKDN2+TSOF0+TSOF1+TSOF2+TBRAN
+					!Sum of all age-adjusted deposition fractions from plasma
+CF=(1.-TOORBC)/(1.-TRBC)
+					!Factor for adjusting deposition fractions based on non-
+					!linear RBC uptake; above RBCNL, RPLAS and, thus, all deposition
+					!fractions from plasma increase because the deposition fraction
+					!to RBCs (TRBC) decreases.
+RPLS=TSUM*RPLAS
+					!Age-adjusted transfer rate (d-1)for plasma based on 
+					!all age-adjusted deposition fractions
+
+REVF=TEVF*RPLS/SIZEVF
+					!Age-adjusted transfer rate (d-1) for the extravascular fluid compartment
+
+!****SIMULATION OF Pb MASSES IN RESPIRATORY TRACT****
+					!INx is the total inflow to the compartment
+					!OUTx is the total transfer rate out of the compartment
+					!Dx is the rate of change of Pb mass in the compartment(first-order differential equation of state)
+					!Yx is the plutonium mass at time=T (integration of D_)
+
+!****EXTRATHORACIC COMPARTMENTS****
+INET1=INAIRTOTAL*FET1(T)
+OUTET1=YET1*ET1EXH
+DET1=INET1-OUTET1
+YET1=INTEG(DET1,YET1Z)
+
+YEXH=INTEG(OUTET1,YEXHZ)
+
+INET2IS=INAIRTOTAL*FET2(T)+YBB1IS*BB1ET2+YBB2IS*BB2ET2
+OUTET2IS=YET2IS*(ET2GI+PISPTS+PISBL2+PISBND)
+DET2IS=INET2IS-OUTET2IS
+YET2IS=INTEG(DET2IS,YET2ISZ)
+
+INET2TS=YET2IS*PISPTS+YBB1TS*BB1ET2+YBB2TS*BB2ET2
+OUTET2TS=YET2TS*(ET2GI+PTSBL2+PTSBND)
+DET2TS=INET2TS-OUTET2TS
+YET2TS=INTEG(DET2TS,YET2TSZ)
+
+INET2BND=YET2IS*PISBND+YET2TS*PTSBND
+OUTET2BND=YET2BND*BNDBL2
+DET2BND=INET2BND-OUTET2BND
+YET2BND=INTEG(DET2BND,YET2BNDZ)
+
+DET2GI=YET2*ET2GI
+YET2GIZ=0.
+YET2GI=INTEG(DET2GI,YET2GIZ)
+
+INET3IS=INAIRTOTAL*FET3(T)
+OUTET3IS=YET3IS*(PISPTS+PISBL2+PISBND+ET3ETLN)
+DET3IS=INET3IS-OUTET3IS
+YET3IS=INTEG(DET3IS,YET3ISZ)
+
+INET3TS=YET3IS*PISPTS
+OUTET3TS=YET3TS*(ET3ETLN+PTSBL2+PTSBND)
+DET3TS=INET3TS-OUTET3TS
+YET3TS=INTEG(DET3TS,YET3TSZ)
+
+INET3BND=YET3IS*PISBND+YET3TS*PTSBND
+OUTET3BND=YET3BND*BNDBL2
+DET3BND=INET3BND-OUTET3BND
+YET3BND=INTEG(DET3BND,YET3BNDZ)
+
+INETLNIS=YET3IS*ET3ETLN
+OUTETLNIS=YETLNIS*(PISPTS+PISBL2+PISBND)
+DETLNIS=INETLNIS-OUTETLNIS
+YETLNIS=INTEG(DETLNIS,YETLNISZ)
+
+INETLNTS=YETLNIS*PISPTS+YET3TS*ET3ETLN
+OUTETLNTS=YETLNTS*(PTSBL2+PTSBND)
+DETLNTS=INETLNTS-OUTETLNTS
+YETLNTS=INTEG(DETLNTS,YETLNTSZ)
+
+INETLNBND=YETLNIS*PISBND+YETLNTS*PTSBND
+OUTETLNBND=YETLNBND*BNDBL2
+DETLNBND=INETLNBND-OUTETLNBND
+YETLNBND=INTEG(DETLNBND,YETLNBNDZ)
+
+!****BRONCHI (BB) AND BRONCHIOLES (BBO)****
+INBB1IS=INAIRTOTAL*FBB1(T)+YBBO1IS*BBO1BB1+YBBO2IS*BBO2BB1
+OUTBB1IS=YBB1IS*(BB1ET2+PISPTS+PISBL2+PISBND)
+DBB1IS=INBB1IS-OUTBB1IS
+YBB1IS=INTEG(DBB1IS,YBB1ISZ)
+
+INBB1TS=YBB1IS*PISPTS+YBBO1TS*BBO1BB1+YBBO2TS*BBO2BB1
+OUTBB1TS=YBB1TS*(BB1ET2+PTSBL2+PTSBND)
+DBB1TS=INBB1TS-OUTBB1TS
+YBB1TS=INTEG(DBB1TS,YBB1TSZ)
+
+INBB1BND=YBB1IS*PISBND+YBB1TS*PTSBND
+OUTBB1BND=YBB1BND*BNDBL2
+DBB1BND=INBB1BND-OUTBB1BND
+YBB1BND=INTEG(DBB1BND,YBB1BNDZ)
+
+INBB2IS=INAIRTOTAL*FBB2(T)
+OUTBB2IS=YBB2IS*(BB2ET2+PISPTS+PISBL2+PISBND)
+DBB2IS=INBB2IS-OUTBB2IS
+YBB2IS=INTEG(DBB2IS,YBB2ISZ)
+
+INBB2TS=YBB2IS*PISPTS
+OUTBB2TS=YBB2TS*(BB2ET2+PTSBL2+PTSBND)
+DBB2TS=INBB2TS-OUTBB2TS
+YBB2TS=INTEG(DBB2TS,YBB2TSZ)
+
+INBB2BND=YBB2IS*PISBND+YBB2TS*PTSBND
+OUTBB2BND=YBB2BND*BNDBL2
+DBB2BND=INBB2BND-OUTBB2BND
+YBB2BND=INTEG(DBB2BND,YBB2BNDZ)
+
+INBB3IS=INAIRTOTAL*FBB3(T)
+OUTBB3IS=YBB3IS*(BB3THLN+PISPTS+PISBL2+PISBND)
+DBB3IS=INBB3IS-OUTBB3IS
+YBB3IS=INTEG(DBB3IS,YBB3ISZ)
+
+INBB3TS=YBB3IS*PISPTS
+OUTBB3TS=YBB3TS*(BB3THLN+PTSBL2+PTSBND)
+DBB3TS=INBB3TS-OUTBB3TS
+YBB3TS=INTEG(DBB3TS,YBB3TSZ)
+
+INBB3BND=YBB3IS*PISBND+YBB3TS*PTSBND
+OUTBB3BND=YBB3BND*BNDBL2
+DBB3BND=INBB3BND-OUTBB3BND
+YBB3BND=INTEG(DBB3BND,YBB3BNDZ)
+
+INBBO1IS=INAIRTOTAL*FBBO1(T)+YAI1IS*AI1BBO1+YAI2IS*AI2BBO1+YAI3IS*AI3BBO1
+OUTBBO1IS=YBBO1IS*(BBO1BB1+PISPTS+PISBL2+PISBND)
+DBBO1IS=INBBO1IS-OUTBBO1IS
+YBBO1IS=INTEG(DBBO1IS,YBBO1ISZ)
+
+INBBO1TS=YBBO1IS*PISPTS+YAI1TS*AI1BBO1+YAI2TS*AI2BBO1+YAI3TS*AI3BBO1
+OUTBBO1TS=YBBO1TS*(BBO1BB1+PTSBL2+PTSBND)
+DBBO1TS=INBBO1TS-OUTBBO1TS
+YBBO1TS=INTEG(DBBO1TS,YBBO1TSZ)
+
+INBBO1BND=YBBO1IS*PISBND+YBBO1TS*PTSBND
+OUTBBO1BND=YBBO1BND*BNDBL2
+DBBO1BND=INBBO1BND-OUTBBO1BND
+YBBO1BND=INTEG(DBBO1BND,YBBO1BNDZ)
+
+INBBO2IS=INAIRTOTAL*FBBO2(T)
+OUTBBO2IS=YBBO2IS*(BBO2BB1+PISPTS+PISBL2+PISBND)
+DBBO2IS=INBBO2IS-OUTBBO2IS
+YBBO2IS=INTEG(DBBO2IS,YBBO2ISZ)
+
+INBBO2TS=YBBO2IS*PISPTS
+OUTBBO2TS=YBBO2TS*(BBO2BB1+PTSBL2+PTSBND)
+DBBO2TS=INBBO2TS-OUTBBO2TS
+YBBO2TS=INTEG(DBBO2TS,YBBO2TSZ)
+
+INBBO2BND=YBBO2IS*PISBND+YBBO2TS*PTSBND
+OUTBBO2BND=YBBO2BND*BNDBL2
+DBBO2BND=INBBO2BND-OUTBBO2BND
+YBBO2BND=INTEG(DBBO2BND,YBBO2BNDZ)
+
+INBBO3IS=INAIRTOTAL*FBBO3(T)
+OUTBBO3IS=YBBO3IS*(PISPTS+BBO3THLN+PISBL2+PISBND)
+DBBO3IS=INBBO3IS-OUTBBO3IS
+YBBO3IS=INTEG(DBBO3IS,YBBO3ISZ)
+
+INBBO3TS=YBBO3IS*PISPTS
+OUTBBO3TS=YBBO3TS*(BBO3THLN+PTSBL2+PTSBND)
+DBBO3TS=INBBO3TS-OUTBBO3TS
+YBBO3TS=INTEG(DBBO3TS,YBBO3TSZ)
+
+INBBO3BND=YBBO3IS*PISBND+YBBO3TS*PTSBND
+OUTBBO3BND=YBBO3BND*BNDBL2
+DBBO3BND=INBBO3BND-OUTBBO3BND
+YBBO3BND=INTEG(DBBO3BND,YBBO3BNDZ)
+
+!****ALVEOLAR INTERSTITIUM (AI)****
+INAI1IS=INAIRTOTAL*FAI1(T)
+OUTAI1IS=YAI1IS*(AI1BBO1+PISPTS+PISBL2+PISBND)
+DAI1IS=INAI1IS-OUTAI1IS
+YAI1IS=INTEG(DAI1IS,YAI1ISZ)
+
+INAI1TS=YAI1IS*PISPTS
+OUTAI1TS=YAI1TS*(AI1BBO1+PTSBL2+PTSBND)
+DAI1TS=INAI1TS-OUTAI1TS
+YAI1TS=INTEG(DAI1TS,YAI1TSZ)
+
+INAI1BND=YAI1IS*PISBND+YAI1TS*PTSBND
+OUTAI1BND=YAI1BND*BNDBL2
+DAI1BND=INAI1BND-OUTAI1BND
+YAI1BND=INTEG(DAI1BND,YAI1BNDZ)
+
+INAI2IS=INAIRTOTAL*FAI2(T)
+OUTAI2IS=YAI2IS*(AI2BBO1+PISPTS+PISBL2+PISBND)
+DAI2IS=INAI2IS-OUTAI2IS
+YAI2IS=INTEG(DAI2IS,YAI2ISZ)
+
+INAI2TS=YAI2IS*PISPTS
+OUTAI2TS=YAI2TS*(AI2BBO1+PTSBL2+PTSBND)
+DAI2TS=INAI2TS-OUTAI2TS
+YAI2TS=INTEG(DAI2TS,YAI2TSZ)
+
+INAI2BND=YAI2IS*PISBND+YAI2TS*PTSBND
+OUTAI2BND=YAI2BND*BNDBL2
+DAI2BND=INAI2BND-OUTAI2BND
+YAI2BND=INTEG(DAI2BND,YAI2BNDZ)
+
+INAI3IS=INAIRTOTAL*FAI3(T)
+OUTAI3IS=YAI3IS*(AI3BBO1+AI3THLN+PISPTS+PISBL2+PISBND)
+DAI3IS=INAI3IS-OUTAI3IS
+YAI3IS=INTEG(DAI3IS,YAI3ISZ)
+
+INAI3TS=YAI3IS*PISPTS
+OUTAI3TS=YAI3TS*(AI3BBO1+AI3THLN+PTSBL2+PTSBND)
+DAI3TS=INAI3TS-OUTAI3TS
+YAI3TS=INTEG(DAI3TS,YAI3TSZ)
+
+INAI3BND=YAI3IS*PISBND+YAI3TS*PTSBND
+OUTAI3BND=YAI3BND*BNDBL2
+DAI3BND=INAI3BND-OUTAI3BND
+YAI3BND=INTEG(DAI3BND,YAI3BNDZ)
+
+INTHLNIS=YBB3IS*BB3THLN+YBBO3IS*BBO3THLN+YAI3IS*AI3THLN
+OUTTHLNIS=YTHLNIS*(PISPTS+PISBL2+PISBND)
+DTHLNIS=INTHLNIS-OUTTHLNIS
+YTHLNIS=INTEG(DTHLNIS,YTHLNISZ)
+
+INTHLNTS=YTHLNIS*PISPTS+YBB3TS*BB3THLN+YBBO3TS*BBO3THLN+YAI3TS*AI3THLN
+OUTTHLNTS=YTHLNTS*(PTSBL2+PTSBND)
+DTHLNTS=INTHLNTS-OUTTHLNTS
+YTHLNTS=INTEG(DTHLNTS,YTHLNTSZ)
+
+INTHLNBND=YTHLNIS*PISBND+YTHLNTS*PTSBND
+OUTTHLNBND=YTHLNBND*BNDBL2
+DTHLNBND=INTHLNBND-OUTTHLNBND
+YTHLNBND=INTEG(DTHLNBND,YTHLNBNDZ)
+
+!****REGIONAL Pb MASSES****
+YET2=YET2IS+YET2TS+YET2BND
+YET3=YET3IS+YET3TS+YET3BND
+YETLN=YETLNIS+YETLNTS+YETLNBND
+YET=YET1+YET2+YET3+YETLN
+
+YBB1=YBB1IS+YBB1TS+YBB1BND
+YBB2=YBB2IS+YBB2TS+YBB2BND
+YBB3=YBB3IS+YBB3TS+YBB3BND
+YBB=YBB1+YBB2+YBB3
+
+YBBO1=YBBO1IS+YBBO1TS+YBBO1BND
+YBBO2=YBBO2IS+YBBO2TS+YBBO2BND
+YBBO3=YBBO3IS+YBBO3TS+YBBO3BND
+YBBO=YBBO1+YBBO2+YBBO3
+
+YAI1=YAI1IS+YAI1TS+YAI1BND
+YAI2=YAI2IS+YAI2TS+YAI2BND
+YAI3=YAI3IS+YAI3TS+YAI3BND
+YAI=YAI1+YAI2+YAI3
+
+YTHLN=YTHLNIS+YTHLNTS+YTHLNBND
+YTH=YBB+YBBO+YAI+YTHLN
+
+YLN=YETLN+YTHLN
+
+YRT=YET+YTH
+
+YLUNG=YRT
+
+YBALRT=INAIRTOTAL-YRT-YABSRT-YEXH-YET2GI
+
+!****ABSOPRPTION FROM RESPIRATORY TRACT COMPARTMENTS****
+ABSETIS=PISBL2*(YET2IS+YET3IS+YETLNIS)
+ABSETTS=PTSBL2*(YET2TS+YET3TS+YETLNTS)
+ABSETBND=BNDBL2*(YET2BND+YET3BND+YETLNBND)
+ABSET=ABSETIS+ABSETTS+ABSETBND
+
+ABSBBIS=PISBL2*(YBB1IS+YBB2IS+YBB3IS)
+ABSBBTS=PTSBL2*(YBB1TS+YBB2TS+YBB3TS)
+ABSBBBND=BNDBL2*(YBB1BND+YBB2BND+YBB3BND)
+ABSBB=ABSBBIS+ABSBBTS+ABSBBBND
+
+ABSBBOIS=PISBL2*(YBBO1IS+YBBO2IS+YBBO3IS)
+ABSBBOTS=PTSBL2*(YBBO1TS+YBBO2TS+YBBO3TS)
+ABSBBOBND=BNDBL2*(YBBO1BND+YBBO2BND+YBBO3BND)
+ABSBBO=ABSBBOIS+ABSBBOTS+ABSBBOBND
+
+ABSAIIS=PISBL2*(YAI1IS+YAI2IS+YAI3IS)
+ABSAITS=PTSBL2*(YAI1TS+YAI2TS+YAI3TS)
+ABSAIBND=BNDBL2*(YAI1BND+YAI2BND+YAI3BND)
+ABSAI=ABSAIIS+ABSAITS+ABSAIBND
+
+ABSTHLNIS=PISBL2*YTHLNIS
+ABSTHLNTS=PTSBL2*YTHLNTS
+ABSTHLNBND=BNDBL2*YTHLNBND
+ABSTHLN=ABSTHLNIS+ABSTHLNTS+ABSTHLNBND
+
+ABSTH=ABSBB+ABSBBO+ABSAI+ABSTHLN
+
+ABSRT=ABSET+ABSTH
+YABSRTZ=0.
+YABSRT=INTEG(ABSRT,YABSRTZ)
+
+!****SIMULATION OF Pb MASSES IN SYSTEMIC TISSUE COMPARTMENTS****
+			!Px is the total inflow to the compartment
+			!TOUT_x is the total transfer rate out of the compartment
+			!Dx is the rate of change of Pb mass in the compartment (first-order differential equation of state)
+			!Yx is the Pb mass at time=T (ingetration of D_)
+
+!****Pb INGESTION FROM ALL SOURCES****GD 04/16/13 <<GD 03/05/14>>
+			!FINDUST (etc) are used to apportion sources in GIT for applying source-specific RBA
+INET2GI=YET2*ET2GI
+INGEST=INDUSTTOTAL+INFOODTOTAL+INWATERTOTAL+INOTHERTOTAL+INET2GI
+!IF (INGEST>0) THEN
+!	FINDUST=INDUSTTOTAL/INGEST
+!	FINFOOD=INFOODTOTAL/INGEST
+!	FINWATER=INWATERTOTAL/INGEST
+!	FINOTHER=INOTHERTOTAL/INGEST
+!	FINET2GI=INET2GI/INGEST
+!ELSE
+!	FINDUST=0
+!	FINFOOD=0
+!	FINWATER=0
+!	FINOTHER=0
+!	FINET2GI=0
+!END IF
+
+!****STOMACH CONTENTS (STMC) COMPARTMENT**** <<GD 03/05/14>>
+!PSTMC=INGEST
+		!Inflow of Pb from ingestions and inhalation 
+!TOUT_STMC=RDECAY+GSCAL(T)*RSTMC
+!DSTMC=PSTMC-TOUT_STMC*YSTMC
+!YSTMC=INTEG(DSTMC,YSTMC0)
+
+TOUT_STMC=RDECAY+GSCAL(T)*RSTMC
+
+PSTMCDUST=INDUSTTOTAL 
+DSTMCDUST=PSTMCDUST-TOUT_STMC*YSTMCDUST
+YSTMCDUST=INTEG(DSTMCDUST,YSTMC0)
+
+PSTMCFOOD=INFOODTOTAL 
+DSTMCFOOD=PSTMCFOOD-TOUT_STMC*YSTMCFOOD
+YSTMCFOOD=INTEG(DSTMCFOOD,YSTMC0)
+
+PSTMCWATER=INWATERTOTAL 
+DSTMCWATER=PSTMCWATER-TOUT_STMC*YSTMCWATER
+YSTMCWATER=INTEG(DSTMCWATER,YSTMC0)
+
+PSTMCOTHER=INOTHERTOTAL 
+DSTMCOTHER=PSTMCOTHER-TOUT_STMC*YSTMCOTHER
+YSTMCOTHER=INTEG(DSTMCOTHER,YSTMC0)
+
+PSTMCET2GI=INET2GI
+DSTMCET2GI=PSTMCET2GI-TOUT_STMC*YSTMCET2GI
+YSTMCET2GI=INTEG(DSTMCET2GI,YSTMC0)
+
+YSTMC=YSTMCDUST+YSTMCFOOD+YSTMCWATER+YSTMCOTHER+YSTMCET2GI
+
+
+!****SMALL INTESTINE CONTENTS (SIC) COMPARTMENT**** <<GD 03/05/14>>
+!PSIC=(GSCAL(T)*RSTMC*YSTMC+H1TOSI*RLVR1*YLVR1+TFECE*CF*BTEMP)      
+!TOUT_SIC=RDECAY+GSCAL(T)*RSIC
+!DSIC=PSIC-TOUT_SIC*YSIC
+!YSIC=INTEG(DSIC,YSIC0)
+
+TOUT_SIC=RDECAY+GSCAL(T)*RSIC
+
+PSICDUST=GSCAL(T)*RSTMC*YSTMCDUST
+DSICDUST=PSICDUST-TOUT_SIC*YSICDUST
+YSICDUST=INTEG(DSICDUST,YSIC0)
+
+PSICFOOD=GSCAL(T)*RSTMC*YSTMCFOOD
+DSICFOOD=PSICFOOD-TOUT_SIC*YSICFOOD
+YSICFOOD=INTEG(DSICFOOD,YSIC0)
+
+PSICWATER=GSCAL(T)*RSTMC*YSTMCWATER
+DSICWATER=PSICWATER-TOUT_SIC*YSICWATER
+YSICWATER=INTEG(DSICWATER,YSIC0)
+
+PSICOTHER=GSCAL(T)*RSTMC*YSTMCOTHER
+DSICOTHER=PSICOTHER-TOUT_SIC*YSICOTHER
+YSICOTHER=INTEG(DSICOTHER,YSIC0)
+
+PSICET2GI=GSCAL(T)*RSTMC*YSTMCET2GI
+DSICET2GI=PSICET2GI-TOUT_SIC*YSICET2GI
+YSICET2GI=INTEG(DSICET2GI,YSIC0)
+
+PSICINTERNAL=H1TOSI*RLVR1*YLVR1+TFECE*CF*BTEMP   
+DSICINTERNAL=PSICINTERNAL-TOUT_SIC*YSICINTERNAL
+YSICINTERNAL=INTEG(DSICINTERNAL,YSIC0)
+
+YSIC=YSICDUST+YSICFOOD+YSICWATER+YSICOTHER+YSICET2GI+YSICINTERNAL
+
+
+
+!****UPPER LARGE INTESTINE CONTENTS****<<GD 03/05/14>>
+			!Amount of ingested Pb entering upper large intestine from small intestine (RSIC*YSIC)
+			!is apportioned into sources, based on their fractional contribution to INGEST. 
+			!A source-specific RBA is applied to each portion.  
+!PULIC=GSCAL(T)*RSIC*YSIC*(1-AF1(T))*(FINDUST*RBADUST+FINWATER*RBAWATER&
+!	+FINFOOD*RBAFOOD+FINOTHER*RBAOTHER+FINET2GI*RBAET2GI)
+!TOUT_ULIC=GSCAL(T)*RULI+RDECAY
+!DULIC=PULIC-TOUT_ULIC*YULIC
+!YULIC=INTEG(DULIC,YULIC0)
+
+PULIC=GSCAL(T)*RSIC*(YSICDUST*(1.-AF1(T)*RBADUST)&
+	+YSICFOOD*(1.-AF1(T)*RBAFOOD)& 
+  +YSICWATER*(1.-AF1(T)*RBAWATER)&
+	+YSICOTHER*(1.-AF1(T)*RBAOTHER)&
+  +YSICET2GI*(1.-AF1(T)*RBAET2GI)&
+	+YSICINTERNAL*(1.-AF1(T)))
+TOUT_ULIC=GSCAL(T)*RULI+RDECAY
+DULIC=PULIC-TOUT_ULIC*YULIC
+YULIC=INTEG(DULIC,YULIC0)
+
+
+!****LOWER LARGE INTESTINE CONTENTS****
+PLLIC=GSCAL(T)*RULI*YULIC
+TOUT_LLIC=GSCAL(T)*RLLI+RDECAY
+DLLIC=PLLIC-TOUT_LLIC*YLLIC
+YLLIC=INTEG(DLLIC,YLLIC0)
+
+!****TOTAL Pb ABSORBED FROM GIT****GD 4/16/13 <<GD 03/5/14>>
+!ABSORB=INGEST*AF1(T)*(FINDUST*RBADUST+FINWATER*RBAWATER&
+!	+FINFOOD*RBAFOOD+FINOTHER*RBAOTHER+FINET2GI*RBAET2GI)
+
+ABSORB=YSICDUST*AF1(T)*RBADUST&
+	+YSICFOOD*AF1(T)*RBAFOOD& 
+  +YSICWATER*AF1(T)*RBAWATER&
+	+YSICOTHER*AF1(T)*RBAOTHER&
+  +YSICET2GI*AF1(T)*RBAET2GI
+AUCABS=INTEG(ABSORB,0.)
+TOTABS=INTEG(AUCABS,0.)
+
+!****DIFFUSIBLE PLASMA(PLS)COMPARTMENT****GD4/16/13
+    		!Does not include relatively slowly exchangeable plasma-protein-bound Pb, when the latter compartment is used
+
+!PP1=(RPROT*YPROT+RRBC(T)*YRBC)+(REVF*YEVF)+(RSOF0*YSOF0)&  !<<GD 03/05/14>>
+!  +((1.0-S2HAIR)*RSOF1*YSOF1)+(RSOF2*YSOF2)&
+!  +(H1TOBL*RLVR1*YLVR1)+(RLVR2(T)*YLVR2)&
+!  +(RKDN2(T)*YKDN2)+(RCS2B(T)*YCSUR)+(RTS2B(T)*YTSUR)&
+!  +(RCORT(T)*YCVOL)+(RTRAB(T)*YTVOL)+(RBRAN(T)*YBRAN)&
+!	+(AF1(T)*GSCAL(T)*RSIC*YSIC*(FINDUST*RBADUST&
+!	+FINWATER*RBAWATER+FINFOOD*RBAFOOD&
+!	+FINOTHER*RBAOTHER+FINET2GI*RBAET2GI))
+
+PP1=(RPROT*YPROT+RRBC(T)*YRBC)+(REVF*YEVF)+(RSOF0*YSOF0)&
+  +((1.0-S2HAIR)*RSOF1*YSOF1)+(RSOF2*YSOF2)&
+  +(H1TOBL*RLVR1*YLVR1)+(RLVR2(T)*YLVR2)&
+  +(RKDN2(T)*YKDN2)+(RCS2B(T)*YCSUR)+(RTS2B(T)*YTSUR)&
+  +(RCORT(T)*YCVOL)+(RTRAB(T)*YTVOL)+(RBRAN(T)*YBRAN)&
+	+GSCAL(T)*RSIC*(YSICDUST*AF1(T)*RBADUST&
+	+YSICFOOD*AF1(T)*RBAFOOD& 
+  +YSICWATER*AF1(T)*RBAWATER&
+	+YSICOTHER*AF1(T)*RBAOTHER&
+  +YSICET2GI*AF1(T)*RBAET2GI&
+	+YSICINTERNAL*AF1(T))
+
+PPLS=PP1+ABSRT		!PPLS includes inflow from respiratory tract
+TOUT_PLS=RPLS+RDECAY
+DPLS= PPLS-TOUT_PLS*YPLS
+YPLS=INTEG(DPLS,YPLS0)
+
+BTEMP=RPLS*YPLS
+				!Outflow from plasma during the current step; the product of the age-adjusted transfer rate and the integrated activity in plasma
+
+!****PLASMA-PROTEIN BOUND PB (PROT)****
+PPROT=TPROT*CF*BTEMP
+				!CF is used here to adjust BTEMP (outflow from plasma) for effects of non-linear RBC uptake when RBCNL is exceeded
+TOUT_PROT=RPROT+RDECAY
+DPROT=PPROT-TOUT_PROT*YPROT
+YPROT=INTEG(DPROT,YPROT0)
+YPLAS=YPLS+YPROT
+
+!****RED BLOOD CELLS(RBC)****
+PRBC=TOORBC*BTEMP		!Note, CF has been removed from following
+TOUT_RBC=RRBC(T)+RDECAY
+DRBC=PRBC-TOUT_RBC*YRBC
+YRBC=INTEG(DRBC,YRBC0)
+YBLUD=YPLAS+YRBC
+
+!****EXTRAVASCULAR FLUID(EVF)****
+PEVF=TEVF*CF*BTEMP
+TOUT_EVF=REVF+RDECAY
+DEVF=PEVF-TOUT_EVF*YEVF
+YEVF=INTEG(DEVF,YEVF0)
+
+!****FAST TURNOVER SOFT-TISSUE COMPARTMENT (SOF0)****
+PSOF0=TSOF0*CF*BTEMP
+TOUT_SOF0=RSOF0+RDECAY
+DSOF0=PSOF0-TOUT_SOF0*YSOF0
+YSOF0=INTEG(DSOF0,YSOF00)
+
+!****INTERMEDIATE TURNOVER SOFT-TISSUE COMPARTMENT (SOF1)****
+PSOF1=TSOF1*CF*BTEMP
+TOUT_SOF1=RSOF1+RDECAY
+DSOF1=PSOF1-TOUT_SOF1*YSOF1
+YSOF1=INTEG(DSOF1,YSOF10) 
+
+!****SLOW TURNOVER SOFT-TISSUE COMPARTMENT (SOF2)****
+PSOF2=TSOF2*CF*BTEMP
+TOUT_SOF2=RSOF2+RDECAY
+DSOF2=PSOF2-TOUT_SOF2*YSOF2
+YSOF2=INTEG(DSOF2,YSOF20)
+
+!****BRAIN (BRAN)****
+PBRAN=TBRAN*CF*BTEMP
+TOUT_BRAN=RBRAN(T)+RDECAY
+DBRAN=PBRAN-TOUT_BRAN*YBRAN
+YBRAN=INTEG(DBRAN,YBRAN0)
+
+!****CORTICAL SURFACE (CSUR)****
+PCSUR=TBONE(T)*(1.0-TFRAC(T))*CF*BTEMP+RDF2CS*YCDIF
+				!Inflow to surface of cortical bone TBONE is DF from plasma to bone surface
+				!1-TFRAC is the fraction that goes to cortical surface CF adjusts DF for non-linear RBC uptake
+				!BTEMP is total outflow from plasma RDF2CS is the age-adjusted transfer rate (d-1) from 
+				!exchangeable pool of cortical bone to bone surface YCDIF is the activity in exchangeable pool of !cortical bone
+TOUT_CSUR=RCS2B(T)+RCS2DF(T)+RDECAY
+				!Sum of transfer rates (d-1) out of cortical bone surface plus radioactive decay RCS2B is transfer rate from cortical bone surface to plasma
+				!RCS2DF is transfer rate from cortical bone surface to exchangeable pool of cortical bone
+DCSUR=PCSUR-TOUT_CSUR*YCSUR
+YCSUR=INTEG(DCSUR,YCSUR0)
+
+!****EXCHANGEABLE CORTICAL VOLUME (CDIF)****
+PCDIF=RCS2DF(T)*YCSUR
+TOUT_CDIF=RDF2CS+RDF2DC+RDECAY
+DCDIF=PCDIF-TOUT_CDIF*YCDIF
+YCDIF=INTEG(DCDIF,YCDIF0)
+
+!**** NONEXCHANGEABLE CORTICAL VOLUME (CVOL)****
+PCVOL=RDF2DC*YCDIF
+TOUT_CVOL=RCORT(T)+RDECAY
+DCVOL=PCVOL-TOUT_CVOL*YCVOL
+YCVOL=INTEG(DCVOL,YCVOL0)
+
+!****TRABECULAR SURFACE (TSUR)****
+PTSUR=(TBONE(T)*TFRAC(T)*CF*BTEMP+RDF2TS*YTDIF)
+TOUT_TSUR=RTS2B(T)+RTS2DF(T)+RDECAY
+DTSUR=PTSUR-TOUT_TSUR*YTSUR
+YTSUR=INTEG(DTSUR,YTSUR0)
+
+!****EXCHANGEABLE TRABECULAR VOLUME (CDIF)****
+PTDIF=RTS2DF(T)*YTSUR
+TOUT_TDIF=RDF2TS+RDF2DT+RDECAY
+DTDIF=PTDIF-TOUT_TDIF*YTDIF
+YTDIF=INTEG(DTDIF,YTDIF0)
+
+!****NONEXCHANGEABLE TRABECULAR VOLUME (TVOL)****
+PTVOL=RDF2DT*YTDIF
+TOUT_TVOL=RTRAB(T)+RDECAY
+DTVOL=PTVOL-TOUT_TVOL*YTVOL
+YTVOL=INTEG(DTVOL,YTVOL0)
+
+!****LIVER 1 (LVR1)****
+PLVR1=TLVR1*CF*BTEMP
+TOUT_LVR1=RLVR1+RDECAY
+DLVR1=PLVR1-TOUT_LVR1*YLVR1
+YLVR1=INTEG(DLVR1,YLVR10)
+
+!****LIVER 2 (LVR2)****
+PLVR2=H1TOH2*RLVR1*YLVR1
+TOUT_LVR2=RLVR2(T)+RDECAY
+DLVR2=PLVR2-TOUT_LVR2*YLVR2
+YLVR2=INTEG(DLVR2,YLVR20)
+
+!***TOTAL Pb IN LIVER****
+YLIVR=YLVR1+YLVR2
+
+!****KIDNEY 1****
+PKDN1=TKDN1*CF*BTEMP
+TOUT_KDN1=RKDN1+RDECAY
+DKDN1=PKDN1-TOUT_KDN1*YKDN1
+YKDN1=INTEG(DKDN1,YKDN10)
+
+!****KIDNEY 2****
+PKDN2=TKDN2*CF*BTEMP
+TOUT_KDN2=RKDN2(T)+RDECAY
+DKDN2=PKDN2-TOUT_KDN2*YKDN2
+YKDN2=INTEG(DKDN2,YKDN20)
+
+!****TOTAL Pb IN KIDNEY****
+YKDNE=YKDN1+YKDN2
+
+!****BLADDER****
+PBLAD=(TURIN*CF*BTEMP+RKDN1*YKDN1)
+TOUT_BLAD=RBLAD(T)+RDECAY
+DBLAD=PBLAD-TOUT_BLAD*YBLAD
+YBLAD=INTEG(DBLAD,YBLAD0)
+
+!****URINE****
+PURIN=RBLAD(T)*YBLAD
+DURIN=PURIN
+YURIN=INTEG(DURIN,YURIN0)
+IF (T .NE. 0.) TWAURIN=YURIN/T
+
+!****FECES****
+PFECE=GSCAL(T)*RLLI*YLLIC
+DFECE=PFECE
+YFECE=INTEG(DFECE,YFECE0)
+
+!****SWEAT****
+PSWET=TSWET*CF*BTEMP
+DSWET=PSWET
+YSWET=INTEG(DSWET,YSWET0)
+
+!****HAIR, NAILS, DESQUAMATED SKIN****
+PHAIR=S2HAIR*RSOF1*YSOF1
+DHAIR=PHAIR
+YHAIR=INTEG(DHAIR,YHAIR0)
+
+
+!****TOTAL Pb BODY BURDEN****
+YGI=YSTMC+YSIC+YULIC+YLLIC !Total Pb in GI-tract
+
+SIGMA=YPLAS+YRBC+YEVF+YSOF0+YSOF1+YSOF2+YBRAN&
+    		+YCVOL+YTVOL+YCSUR+YTSUR+YCDIF+YTDIF&
+				+YKDN1+YKDN2+YBLAD+YLVR1+YLVR2&
+				+YRT+YSTMC+YSIC+YULIC+YLLIC&
+     	 +YURIN+YFECE+YSWET+YHAIR
+						!Total activity in all compartments
+
+TBODY1=YPLAS+YRBC+YEVF+YSOF0+YSOF1+YSOF2+YBRAN&
+     	+YCVOL+YTVOL+YCSUR+YTSUR+YCDIF+YTDIF&
+			 +YKDN1+YKDN2+YLVR1+YLVR2
+						!Total Pb in body excluding bladder, RT and GIT
+
+TBODY2=TBODY1+YRT+YBLAD+YSTMC+YSIC+YULIC+YLLIC
+						!Total Pb in body including bladder, RT and GIT
+
+TSOFTALL=YSOFT+YLIVR+YKDNE+YBRAN+YBLUD+YEVF
+						!Total Pb in all soft tissues, excluding bladder, RT and GIT
+
+!****TOTEL Pb EXCRETED****
+TOTEXC=YURIN+YFECE+YSWET+YHAIR
+
+!****TOTAL Pb TIISUE BURDENS AND CONCENTRATIONS****
+YSKEL=YCVOL+YTVOL+YCSUR+YTSUR+YCDIF+YTDIF
+YTRAB=YTSUR+YTDIF+YTVOL
+YCORT=YCSUR+YCDIF+YCVOL
+YSOFT=YSOF0+YSOF1+YSOF2  
+
+!****FRACTION OF BURDEN IN BONE, BRAIN, LIEVER, KIDNEY, SOFT TISSUE****
+IF (TBODY1 .NE. 0.0) THEN
+	BONFRC=YSKEL/TBODY1 
+  BRNFRC=YBRAN/TBODY1
+  HEPFRC=YLIVR/TBODY1
+  BLDFRC=YBLUD/TBODY1
+  RENFRC=YKDNE/TBODY1
+  OTHFRC=YSOFT/TBODY1
+ENDIF
+
+!****TISSUE Pb CONCENTRATIONS****
+!ADJRBC=RBCVOL/(RBCVOL+PLSVOL)	!RBC volume fraction of blood  <<GD 08/27/13>>
+
+IF (YBLUD .NE. 0.0) PLSRBC=YPLAS/YBLUD                      !Plasma Pb mass as fraction of blood Pb mass
+IF (YBLUD .NE. 0.0) PCENT=100.*YPLAS/YBLUD                  !Plasma Pb mass as percent of blood Pb mass
+!IF (AMTBLD(T) .NE. 0.0) BLCONC=YBLUD/AMTBLD(T)              !Blood Pb concentration (ug/dL)
+IF (VBL .NE. 0.0) BLCONC=YBLUD/(VBL*10.)              !Blood Pb concentration (ug/dL) <<GD 08/15/13>>
+! (RBCVOL .NE. 0.0) RBCONC=YRBC/(ADJRBC*AMTBLD(T))         !RBC Pb concentration (ug/dL)
+
+IF (VRBC .NE. 0.0) RBCONCC=YRBC/(VRBC*10.)				!<<GD 03/11/14: This prevents illegal values for TOORBC at short NI cycle lenghts>>
+IF (RBCONCC .LE. SATRAT) THEN										 !that could result in RBCONC >SATRAT>>>	
+	 RBCONC=RBCONCC
+ELSE
+	RBCONC=SATRAT
+END IF
+
+!IF (VRBC .NE. 0.0) RBCONC=YRBC/(VRBC*10.)				 !RBC Pb concentration (ug/dL) <<GD 08/15/13>>
+
+!IF (AMTBLD(T) .NE. 0.0) PLCONC=YPLAS/(AMTBLD(T)*(1-ADJRBC)) !Plasma Pb concentration (ug/dL)
+IF (VPL .NE. 0.0) PLCONC=YPLAS/(VPL*10.) !Plasma Pb concentration (ug/dL) <<GD 08/15/13>>
+IF (BLCONC .NE. 0.0) PLCRBC=100*PLCONC/BLCONC               !Plasma Pb concentration (ug/dL) as percent of blood concentration
+
+AUCBLCONC=INTEG(BLCONC,0.)  !Time-integrated blood Pb concentration
+IF (T .GT. 0.) TWABLCONC=AUCBLCONC/T	!Time-weighted average blood Pb concentration
+
+RENCON=YKDNE/KWT	  !Adult kidney Pb concentration (ug/g) (based on age-specific Pb mass in kdiney and adult kidney weight)
+CRTCON=YCORT/CRTWT	!Adult cortical bone Pb concentration (ug/g)(based on age-specific Pb mass in liver and adult liver weight)
+TRBCON=YTRAB/TRBWT	!Adult trabecular Pb concentration (ug/g) (based on age-specific Pb mass in bone and adult bone weight)
+ASHCON=YSKEL/ASHWT	!Adult skeletal ash Pb concentration (ug/g)(based on age-specific Pb mass in bone and adult bone ash weight)
+KIDCONC=YKDNE/WKID  !Age-specific kidney Pb concentration (ug/g) (based a age-specfic Pb mass in kidney and age-specific kidney weight)
+LIVCONC=YLIVR/WLIV  !Age-specific liver Pb concentration (ug/g)(based a age-specfic Pb mass in liver and age-specific liver weight)
+CORTCONC=YCORT/WCRT !Age-specific cortical bone Pb concentration (ug/g)(based a age-specfic Pb mass in cortical bone and age-specific cortical bone weight)
+TRABCONC=YTRAB/WTRB !Age-specific trabecular bone Pb concentration (ug/g)(based a age-specfic Pb mass in trabecular bone and age-specific trabecular bone weight)
+BONECONC=YSKEL/WBONE !Age-specific bone Pb concentration (ug/g)(based a age-specfic Pb mass in trabecular bone and age-specific trabecular bone weight)
+CORTCONCASH=CORTCONC/CRTASHF  !Age-specific cortical bone Pb concentration (ug/g ash)  <<GD 2/21/14>>
+TRABCONCASH=TRABCONC/TRBASHF  !Age-specific trabecular bone Pb concentration (ug/g ash)  <<GD 2/21/14>>
+
+!****"CLEARANCES"****
+!IF (PLCONC .NE. 0.) PCLEAR=10.*PURIN/PLCONC  !Renal plasma clearance (L/d-1)
+!IF (BLCONC .NE. 0.) BCLEAR=10.*PURIN/BLCONC	!Renal blood clearance (L/d-1)
+IF (PLCONC .NE. 0.) PCLEAR=PURIN/(PLCONC*10.)  !Renal plasma clearance (L/d-1) <<GD 2/11/14>>
+IF (BLCONC .NE. 0.) BCLEAR=PURIN/(BLCONC*10.)	!Renal blood clearance (L/d-1)  <<GD 2/11/14>>
+
+!****OUTPUT VARIABLES**** 
+INTAKE=INTOTAL     !ug/day
+!IF (AMTBLD(T) .NE. 0.0)CBLOOD=BLCONC      !ug/dL
+IF (VBL .NE. 0.0)CBLOOD=BLCONC      !ug/dL  <<GD 08/15/13>>
+!CBLOOD=BLCONC      !ug/dL
+!IF (AMTBLD(T) .NE. 0.0) CPLAS=PLCONC      !ug/dL
+IF (VPL .NE. 0.0) CPLAS=PLCONC      !ug/dL <<GD 08/15/13>>
+!CPLAS=PLCONC      !ug/dL
+IF (VRBC .NE. 0.0) CRBC=RBCONC  !ug/dL  
+!CRBC=RBCONC        !ug/dL
+CKIDNEY=KIDCONC    !ug/g
+CLIVER=LIVCONC     !ug/g
+CCORT=CORTCONC     !ug/g
+CTRAB=TRABCONC     !ug/g
+CBONE=BONECONC		 !ug/g
+CCORTASH=CORTCONCASH !ug/g ash  <<GD 02/21/14>>
+CTRABASH=TRABCONCASH !ug/g ash  <<GD 02/21/14>>
+ABLOOD=YBLUD       !ug
+APLAS=YPLAS        !ug
+ARBC=YRBC			    !ug
+AKIDNEY=YKDNE      !ug
+ALIVER=YLIVR       !ug
+ACORT=YCORT        !ug
+ATRAB=YTRAB         !ug
+ABONE=YSKEL        !ug
+ASOFT=YSOFT        !ug
+ABRAIN=YBRAN        !ug
+ART=YLUNG          !ug
+AURINE=YURIN       !ug
+AFECAL=YFECE       !ug
+TBODY=TBODY2      !ug
+
+	
+END   !END OF DERIVATIVE SECTION
+
+DISCRETE	!START OF DISCRETE SECTION
+
+END		!END OF DISCRETE SECTION
+TERMT (T .GE. TSTOP)
+
+END    !END OF DYNAMIC SECTION
+
+TERMINAL
+
+END			!END OF TERMINAL SECTION
+
+END			!End of Program
+   
