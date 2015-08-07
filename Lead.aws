@@ -2,4 +2,5 @@
   <project name="AALMv3.apj" location=".\aalmv3" />
   <project name="AALMv2.apj" location=".\aalmv2" />
   <project name="AALMv4.apj" location=".\aalmv4.1" />
+  <project name="AALMv42.apj" location=".\aalmv42" />
 </workspace>
