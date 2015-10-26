@@ -4,5 +4,5 @@
   <mscript name="AALM_LG_OUT_v4_2_071815.m" location="." />
   <mscript name="AALM_LG_RUN_v4_2_071815.m" location="." />
   <exe name="AALM_LG_v4_2_071815.dll" location="." />
-  <resultsfolder name="" location="" />
+  <resultsfolder name="" location="." />
 </project>
